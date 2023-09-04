@@ -20,6 +20,10 @@ import os
 import signal
 import sys
 from asyncio import iscoroutine
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from typing import TextIO
 
 import six
 from pyparsing import (alphanums, locatedExpr,
@@ -107,7 +111,7 @@ class ConfigShell(object):
     _current_token = ''
     _current_completions = []
 
-    def __init__(self, preferences_dir=None):
+    def __init__(self, preferences_dir: str = None):
         '''
         Creates a new ConfigShell.
         @param preferences_dir: Directory to load/save preferences from/to
@@ -187,7 +191,7 @@ class ConfigShell(object):
 
     # Private methods
 
-    def _display_completions(self, substitution, matches, max_length):
+    def _display_completions(self, substitution: str, matches: list[str], max_length: int):
         '''
         Display the completions. Invoked by readline.
         @param substitution: string to complete
@@ -257,7 +261,7 @@ class ConfigShell(object):
         y_pos = self.con.get_cursor_xy()[1]
         self.con.set_cursor_xy(x_orig, y_pos)
 
-    def _complete_token_command(self, text, path, command):
+    def _complete_token_command(self, text: str, path: str, command: str):
         '''
         Completes a partial command token, which could also be the beginning
         of a path.
@@ -328,7 +332,7 @@ class ConfigShell(object):
         # We are done
         return completions
 
-    def _complete_token_path(self, text):
+    def _complete_token_path(self, text: str):
         '''
         Completes a partial path token.
         @param text: Current text being typed by the user.
@@ -381,7 +385,7 @@ class ConfigShell(object):
                 'path', self.prefs['color_path'])
         return completions
 
-    def _complete_token_pparam(self, text, path, command, pparams, kparams):
+    def _complete_token_pparam(self, text: str, path: str, command: str, pparams: list[str], kparams: dict[str, str]):
         '''
         Completes a positional parameter token, which can also be the keywork
         part of a kparam token, as before the '=' sign is on the line, the
@@ -525,7 +529,7 @@ class ConfigShell(object):
         self.log.debug("Found completions %s." % str(completions))
         return completions
 
-    def _complete_token_kparam(self, text, path, command, pparams, kparams):
+    def _complete_token_kparam(self, text: str, path: str, command: str, pparams: list[str], kparams: dict[str, str]):
         '''
         Completes a keyword=value parameter token.
         @param path: Path of the target ConfigNode.
@@ -572,7 +576,7 @@ class ConfigShell(object):
 
         return ["%s=%s" % (keyword, completion) for completion in completions]
 
-    def _complete(self, text, state):
+    def _complete(self, text: str, state: int):
         '''
         Text completion method, directly called by readline.
         Finds out what token the user wants completion for, and calls the
@@ -630,8 +634,8 @@ class ConfigShell(object):
         else:
             return None
 
-    def _dispatch_completion(self, path, command,
-                             pparams, kparams, text, current_token):
+    def _dispatch_completion(self, path: str, command: str,
+                             pparams: list[str], kparams: dict[str, str], text: str, current_token: str):
         '''
         This method takes care of dispatching the current completion request
         from readline (via the _complete() method) to the relevant token
@@ -742,7 +746,7 @@ class ConfigShell(object):
                         "Saving command history has been disabled!")
                     self._save_history = False
 
-    def _parse_cmdline(self, line):
+    def _parse_cmdline(self, line: str):
         '''
         Parses the command line entered by the user. This is a wrapper around
         the actual pyparsing parser that pre-chews the result trees to
@@ -774,7 +778,7 @@ class ConfigShell(object):
                        + "kparams=%s" % str(kparams))
         return (parse_results, path, command, pparams, kparams)
 
-    async def _execute_command(self, path, command, pparams, kparams):
+    async def _execute_command(self, path: str, command: str, pparamsl: list[str], kparams: dict[str, str]):
         '''
         Calls the target node to execute a command.
         Behavior depends on the target node command's result:
@@ -832,7 +836,7 @@ class ConfigShell(object):
 
     # Public methods
 
-    async def run_cmdline_async(self, cmdline):
+    async def run_cmdline_async(self, cmdline: str):
         '''
         Runs the specified command. Global commands are checked first,
         then local commands from the current node.
@@ -848,7 +852,7 @@ class ConfigShell(object):
             path, command, pparams, kparams = self._parse_cmdline(cmdline)[1:]
             await self._execute_command(path, command, pparams, kparams)
 
-    def run_script(self, script_path, exit_on_error=True):
+    def run_script(self, script_path: str, exit_on_error: bool = True):
         '''
         Runs the script located at script_path.
         Script runs always start from the root context.
@@ -865,7 +869,7 @@ class ConfigShell(object):
         finally:
             script_fd.close()
 
-    def run_stdin(self, file_descriptor=sys.stdin, exit_on_error=True):
+    def run_stdin(self, file_descriptor: TextIO = sys.stdin, exit_on_error: bool = True):
         '''
         Reads commands to be run from a file descriptor, stdin by default.
         The run always starts from the root context.
@@ -910,7 +914,7 @@ class ConfigShell(object):
             finally:
                 readline.set_completer(old_completer)
 
-    def attach_root_node(self, root_node):
+    def attach_root_node(self, root_node: ConfigNode):
         '''
         @param root_node: The root ConfigNode object
         @type root_node: ConfigNode

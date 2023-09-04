@@ -15,10 +15,16 @@ License for the specific language governing permissions and limitations
 under the License.
 '''
 
+from __future__ import annotations
+
 import inspect
 import re
+from typing import TYPE_CHECKING
 
 import six
+
+if TYPE_CHECKING:
+    from configshell_fb import ConfigShell
 
 
 class ExecutionError(Exception):
@@ -77,7 +83,7 @@ class ConfigNode(object):
                  get more information.
                  '''
 
-    def __init__(self, name, parent=None, shell=None):
+    def __init__(self, name: str, parent: ConfigNode = None, shell: ConfigShell = None):
         '''
         @param parent: The parent ConfigNode of the new object. If None, then
         the ConfigNode will be a root node.
@@ -86,18 +92,18 @@ class ConfigNode(object):
         @type shell: ConfigShell
         '''
         self._name = name
-        self._children = set([])
+        self._children: set[ConfigNode] = set()
         if parent is None:
             if shell is None:
                 raise ValueError("A root ConfigNode must have a shell.")
             else:
-                self._parent = None
-                self._shell = shell
+                self._parent: ConfigNode | None = None
+                self._shell: ConfigShell | None = shell
                 shell.attach_root_node(self)
         else:
             if shell is None:
-                self._parent = parent
-                self._shell = None
+                self._parent: ConfigNode | None = parent
+                self._shell: ConfigShell | None = None
             else:
                 raise ValueError("A non-root ConfigNode can't have a shell.")
 
@@ -108,7 +114,7 @@ class ConfigNode(object):
                                      % self._name)
             self._parent._children.add(self)
 
-        self._configuration_groups = {}
+        self._configuration_groups: dict[str, list[str, str, str]] = {}
 
         self.define_config_group_param(
             'global', 'tree_round_nodes', 'bool',
@@ -158,7 +164,7 @@ class ConfigNode(object):
 
     # User interface types
 
-    def ui_type_number(self, value=None, enum=False, reverse=False):
+    def ui_type_number(self, value=None, enum: bool = False, reverse: bool = False):
         '''
         UI parameter type helper for number parameter type.
         @param value: Value to check against the type.
@@ -198,7 +204,7 @@ class ConfigNode(object):
             else:
                 return value
 
-    def ui_type_string(self, value=None, enum=False, reverse=False):
+    def ui_type_string(self, value=None, enum: bool = False, reverse: bool = False):
         '''
         UI parameter type helper for string parameter type.
         @param value: Value to check against the type.
@@ -238,7 +244,7 @@ class ConfigNode(object):
             else:
                 return value
 
-    def ui_type_bool(self, value=None, enum=False, reverse=False):
+    def ui_type_bool(self, value=None, enum: bool = False, reverse: bool = False):
         '''
         UI parameter type helper for boolean parameter type. Valid values are
         either 'true' or 'false'.
@@ -275,7 +281,7 @@ class ConfigNode(object):
             raise ValueError("Syntax error, '%s' is not %s."
                              % (value, syntax))
 
-    def ui_type_loglevel(self, value=None, enum=False, reverse=False):
+    def ui_type_loglevel(self, value=None, enum: bool = False, reverse: bool = False):
         '''
         UI parameter type helper for log level parameter type.
         @param value: Value to check against the type.
@@ -310,7 +316,7 @@ class ConfigNode(object):
             raise ValueError("Syntax error, '%s' is not %s"
                              % (value, syntax))
 
-    def ui_type_color(self, value=None, enum=False, reverse=False):
+    def ui_type_color(self, value=None, enum: bool = False, reverse: bool = False):
         '''
         UI parameter type helper for color parameter type.
         @param value: Value to check against the type.
@@ -347,7 +353,7 @@ class ConfigNode(object):
             raise ValueError("Syntax error, '%s' is not %s"
                              % (value, syntax))
 
-    def ui_type_colordefault(self, value=None, enum=False, reverse=False):
+    def ui_type_colordefault(self, value=None, enum: bool = False, reverse: bool = False):
         '''
         UI parameter type helper for default color parameter type.
         @param value: Value to check against the type.
@@ -386,7 +392,7 @@ class ConfigNode(object):
 
     # User interface get/set methods
 
-    def ui_setgroup_global(self, parameter, value):
+    def ui_setgroup_global(self, parameter: str, value):
         '''
         This is the backend method for setting parameters in configuration
         group 'global'. It simply uses the Prefs() backend to store the global
@@ -409,7 +415,7 @@ class ConfigNode(object):
         '''
         self.shell.prefs[parameter] = value
 
-    def ui_getgroup_global(self, parameter):
+    def ui_getgroup_global(self, parameter: str):
         '''
         This is the backend method for getting configuration parameters out of
         the global configuration group. It gets the values from the Prefs()
@@ -427,7 +433,7 @@ class ConfigNode(object):
         '''
         return self.shell.prefs[parameter]
 
-    def ui_eval_param(self, ui_value, type, default):
+    def ui_eval_param(self, ui_value: str, type_: str, default):
         '''
         Evaluates a user-provided parameter value using a given type helper.
         If the parameter value is None, the default will be returned. If the
@@ -444,7 +450,7 @@ class ConfigNode(object):
         @rtype: depends on type
         @raise ExecutionError: If evaluation fails.
         '''
-        type_method = self.get_type_method(type)
+        type_method = self.get_type_method(type_)
         if ui_value is None:
             return default
         else:
@@ -455,15 +461,15 @@ class ConfigNode(object):
             else:
                 return value
 
-    def get_type_method(self, type):
+    def get_type_method(self, type_: str):
         '''
         Returns the type helper method matching the type name.
         '''
-        return getattr(self, "%s%s" % (self.ui_type_method_prefix, type))
+        return getattr(self, "%s%s" % (self.ui_type_method_prefix, type_))
 
     # User interface commands
 
-    def ui_command_set(self, group=None, **parameter):
+    def ui_command_set(self, group: str = None, **parameter):
         '''
         Sets one or more configuration parameters in the given group.
         The "global" group contains all global CLI preferences.
@@ -527,7 +533,7 @@ class ConfigNode(object):
             value = type_method(value, reverse=True)
             self.shell.con.display("Parameter %s is now '%s'." % (param, value))
 
-    def ui_complete_set(self, parameters, text, current_param):
+    def ui_complete_set(self, parameters: dict[str, str], text: str, current_param: str):
         '''
         Parameter auto-completion method for user command set.
         @param parameters: Parameters on the command line.
@@ -572,7 +578,7 @@ class ConfigNode(object):
         self.shell.log.debug("Returning completions %s." % str(completions))
         return completions
 
-    def ui_command_get(self, group=None, *parameter):
+    def ui_command_get(self, group: str = None, *parameter):
         '''
         Gets the value of one or more configuration parameters in the given
         group.
@@ -638,7 +644,7 @@ class ConfigNode(object):
             self.shell.con.display("%s=%s %s"
                                    % (param, value, writable))
 
-    def ui_complete_get(self, parameters, text, current_param):
+    def ui_complete_get(self, parameters: dict[str, str], text: str, current_param: str):
         '''
         Parameter auto-completion method for user command get.
         @param parameters: Parameters on the command line.
@@ -674,7 +680,7 @@ class ConfigNode(object):
         self.shell.log.debug("Returning completions %s." % str(completions))
         return completions
 
-    async def ui_command_ls(self, path=None, depth=None):
+    async def ui_command_ls(self, path: str = None, depth: int | str = None):
         '''
         Display either the nodes tree relative to path or to the current node.
 
@@ -712,7 +718,8 @@ class ConfigNode(object):
         tree = await self._render_tree(target, depth=depth)
         self.shell.con.display(tree)
 
-    async def _render_tree(self, root, margin=None, depth=None, do_list=False):
+    async def _render_tree(
+            self, root: ConfigNode, margin: list[bool] = None, depth: int | str = None, do_list: bool = False):
         '''
         Renders an ascii representation of a tree of ConfigNodes.
         @param root: The root node of the tree
@@ -877,7 +884,7 @@ class ConfigNode(object):
             else:
                 return tree
 
-    def ui_complete_ls(self, parameters, text, current_param):
+    def ui_complete_ls(self, parameters: dict[str, str], text: str, current_param: str):
         '''
         Parameter auto-completion method for user command ls.
         @param parameters: Parameters on the command line.
@@ -929,7 +936,7 @@ class ConfigNode(object):
                     in [str(num) for num in range(10)]
                     if (text + number).startswith(text)]
 
-    async def ui_command_cd(self, path=None):
+    async def ui_command_cd(self, path: str = None):
         '''
         Change current path to path.
 
@@ -1051,7 +1058,7 @@ class ConfigNode(object):
                                 self.shell.prefs['path_history_index']))
         return target_node
 
-    def _lines_walker(self, lines, start_pos):
+    def _lines_walker(self, lines: list[str], start_pos: int):
         '''
         Using the curses urwid library, displays all lines passed as argument,
         and after allowing selection of one line using up, down and enter keys,
@@ -1094,7 +1101,7 @@ class ConfigNode(object):
         loop.run()
         return listbox.focus_position
 
-    def ui_complete_cd(self, parameters, text, current_param):
+    def ui_complete_cd(self, parameters: dict[str, str], text: str, current_param: str):
         '''
         Parameter auto-completion method for user command cd.
         @param parameters: Parameters on the command line.
@@ -1112,7 +1119,7 @@ class ConfigNode(object):
                                 if nav.startswith(text)])
             return completions
 
-    def ui_command_help(self, topic=None):
+    def ui_command_help(self, topic: str = None):
         '''
         Displays the manual page for a topic, or list available topics.
         '''
@@ -1160,7 +1167,7 @@ class ConfigNode(object):
         msg += "\n"
         self.shell.con.epy_write(msg)
 
-    def ui_complete_help(self, parameters, text, current_param):
+    def ui_complete_help(self, parameters: dict[str, str], text: str, current_param: str):
         '''
         Parameter auto-completion method for user command help.
         @param parameters: Parameters on the command line.
@@ -1191,7 +1198,7 @@ class ConfigNode(object):
         '''
         return 'EXIT'
 
-    def ui_command_bookmarks(self, action, bookmark=None):
+    def ui_command_bookmarks(self, action: str, bookmark: str = None):
         '''
         Manage your bookmarks.
 
@@ -1269,7 +1276,7 @@ class ConfigNode(object):
         else:
             raise ExecutionError("Syntax error, see 'help bookmarks'.")
 
-    def ui_complete_bookmarks(self, parameters, text, current_param):
+    def ui_complete_bookmarks(self, parameters: dict[str, str], text: str, current_param: str):
         '''
         Parameter auto-completion method for user command bookmarks.
         @param parameters: Parameters on the command line.
@@ -1331,7 +1338,7 @@ class ConfigNode(object):
         '''
         return self._name
 
-    def _set_name(self, name):
+    def _set_name(self, name: str):
         '''
         Sets the node's name.
         '''
@@ -1379,7 +1386,7 @@ class ConfigNode(object):
         '''
         return ('', None)
 
-    def execute_command(self, command, pparams=[], kparams={}):
+    def execute_command(self, command: str, pparams: list[str] = None, kparams: dict[str, str] = None):
         '''
         Execute a user command on the node. This works by finding out which is
         the support command method, using ConfigNode naming convention:
@@ -1397,6 +1404,11 @@ class ConfigNode(object):
         they are interpreted by ConfigShell.
         @rtype: str or ConfigNode or None
         '''
+        if pparams is None:
+            pparams = []
+        if kparams is None:
+            kparams = {}
+
         self.shell.log.debug("Executing command %s " % command
                              + "with pparams %s " % pparams
                              + "and kparams %s." % kparams)
@@ -1409,7 +1421,7 @@ class ConfigNode(object):
         self.assert_params(method, pparams, kparams)
         return method(*pparams, **kparams)
 
-    def assert_params(self, method, pparams, kparams):
+    def assert_params(self, method, pparams: list[str], kparams: dict[str, str]):
         '''
         Checks that positional and keyword parameters match a method
         definition, or raise an ExecutionError.
@@ -1504,7 +1516,7 @@ class ConfigNode(object):
                       if name.startswith(prefix) and name != prefix
                       and inspect.ismethod(getattr(self, name))])
 
-    def get_group_getter(self, group):
+    def get_group_getter(self, group: str):
         '''
         @param group: A valid configuration group
         @type group: str
@@ -1514,7 +1526,7 @@ class ConfigNode(object):
         prefix = self.ui_getgroup_method_prefix
         return getattr(self, '%s%s' % (prefix, group))
 
-    def get_group_setter(self, group):
+    def get_group_setter(self, group: str):
         '''
         @param group: A valid configuration group
         @type group: str
@@ -1524,7 +1536,7 @@ class ConfigNode(object):
         prefix = self.ui_setgroup_method_prefix
         return getattr(self, '%s%s' % (prefix, group))
 
-    def get_command_method(self, command):
+    def get_command_method(self, command: str):
         '''
         @param command: The command to get the method for.
         @type command: str
@@ -1540,7 +1552,7 @@ class ConfigNode(object):
                                  % (command, self.name, self.path))
             raise ValueError('No command named "%s".' % command)
 
-    def get_completion_method(self, command):
+    def get_completion_method(self, command: str):
         '''
         @return: A user command's completion method or None.
         @rtype: method or None
@@ -1555,7 +1567,7 @@ class ConfigNode(object):
         else:
             return method
 
-    def get_command_description(self, command):
+    def get_command_description(self, command: str):
         '''
         @return: An description string for a user command.
         @rtype: str
@@ -1567,7 +1579,7 @@ class ConfigNode(object):
             doc = "No description available."
         return self.shell.con.dedent(doc)
 
-    def get_command_syntax(self, command):
+    def get_command_syntax(self, command: str):
         '''
         @return: A list of formatted syntax descriptions for the command:
             - (syntax, comments, default_values)
@@ -1622,7 +1634,7 @@ class ConfigNode(object):
 
         return syntax, comments, default_values
 
-    def get_command_signature(self, command):
+    def get_command_signature(self, command: str):
         '''
         Get a command's signature.
         @param command: The command to get the signature of.
@@ -1660,8 +1672,8 @@ class ConfigNode(object):
         else:
             return self.parent.get_root()
 
-    def define_config_group_param(self, group, param, type,
-                                  description=None, writable=True):
+    def define_config_group_param(self, group: str, param: str, type_: str,
+                                  description: str = None, writable: bool = True):
         '''
         Helper to define configuration group parameters.
         @param group: The configuration group to add the parameter to.
@@ -1680,13 +1692,13 @@ class ConfigNode(object):
             description = "The %s %s parameter." % (param, group)
 
         # Fail early if the type and set/get helpers don't exist
-        self.get_type_method(type)
+        self.get_type_method(type_)
         self.get_group_getter(group)
         if writable:
             self.get_group_setter(group)
 
         self._configuration_groups[group][param] = \
-            [type, description, writable]
+            [type_, description, writable]
 
     def list_config_groups(self):
         '''
@@ -1694,7 +1706,7 @@ class ConfigNode(object):
         '''
         return self._configuration_groups.keys()
 
-    def list_group_params(self, group, writable=None):
+    def list_group_params(self, group: str, writable: bool = None):
         '''
         Lists the parameters from group matching the optional param, writable
         and type supplied (if none is supplied, returns all group parameters.
@@ -1716,7 +1728,7 @@ class ConfigNode(object):
             params.sort()
             return params
 
-    def get_group_param(self, group, param):
+    def get_group_param(self, group: str, param: str):
         '''
         @param group: The configuration group to retreive the parameter from.
         @type group: str
@@ -1763,7 +1775,7 @@ class ConfigNode(object):
         else:
             return False
 
-    def get_child(self, name):
+    def get_child(self, name: str):
         '''
         @param name: The child's name.
         @type name: str
@@ -1778,7 +1790,7 @@ class ConfigNode(object):
             raise ValueError("No such path %s/%s"
                              % (self.path.rstrip('/'), name))
 
-    def remove_child(self, child):
+    def remove_child(self, child: ConfigNode):
         '''
         Removes a child from our children's list.
         @param child: The child to remove.
@@ -1786,7 +1798,7 @@ class ConfigNode(object):
         '''
         self._children.remove(child)
 
-    def get_node(self, path):
+    def get_node(self, path: str):
         '''
         Looks up a node by path in the nodes tree.
         @param path: The node's path.
@@ -1796,7 +1808,7 @@ class ConfigNode(object):
         @raise ValueError: If there is no node with that path.
         '''
 
-        def adjacent_node(name):
+        def adjacent_node(name: str):
             '''
             Returns an adjacent node or ourself.
             '''

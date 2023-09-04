@@ -23,6 +23,7 @@ import traceback
 from .console import Console
 from .prefs import Prefs
 
+
 class Log(object):
     '''
     Implements a file and console logger using python's logging facility.
@@ -41,8 +42,8 @@ class Log(object):
     colors = {'critical': 'red', 'error': 'red', 'warning': 'yellow',
               'info': 'green', 'verbose': 'blue', 'debug': 'blue'}
 
-    def __init__(self, console_level=None,
-                 logfile=None, file_level=None):
+    def __init__(self, console_level: str = None,
+                 logfile: str = None, file_level: str = None):
         '''
         This class implements the Borg pattern.
         @param console_level: Console log level, defaults to 'info'
@@ -71,7 +72,7 @@ class Log(object):
 
     # Private methods
 
-    def _append(self, msg, level):
+    def _append(self, msg: str, level: str):
         '''
         Just appends the message to the logfile if it exists, prefixing it with
         the current time and level.
@@ -82,18 +83,18 @@ class Log(object):
         '''
         date_fields = time.localtime()
         date = "%d-%02d-%02d %02d:%02d:%02d" \
-                % (date_fields[0], date_fields[1], date_fields[2],
-                   date_fields[3], date_fields[4], date_fields[5])
+               % (date_fields[0], date_fields[1], date_fields[2],
+                  date_fields[3], date_fields[4], date_fields[5])
 
         if self.prefs['logfile']:
-            path =  os.path.expanduser(self.prefs['logfile'])
+            path = os.path.expanduser(self.prefs['logfile'])
             handle = open(path, 'a')
             try:
                 handle.write("[%s] %s %s\n" % (level, date, msg))
             finally:
                 handle.close()
 
-    def _log(self, level, msg):
+    def _log(self, level: str, msg: str):
         '''
         Do the actual logging.
         @param level: The log level of the message.
@@ -102,11 +103,11 @@ class Log(object):
         @type msg: str
         '''
         if self.levels.index(self.prefs['loglevel_file']) \
-           >= self.levels.index(level):
+                >= self.levels.index(level):
             self._append(msg, level.upper())
 
         if self.levels.index(self.prefs['loglevel_console']) \
-           >= self.levels.index(level):
+                >= self.levels.index(level):
             if self.prefs["color_mode"]:
                 msg = self.con.render_text(msg, self.colors[level])
             else:
@@ -118,7 +119,7 @@ class Log(object):
 
     # Public methods
 
-    def debug(self, msg):
+    def debug(self, msg: str):
         '''
         Logs a debug message.
         @param msg: The message to log.
@@ -139,7 +140,7 @@ class Log(object):
             trace += '\n%s' % msg
         self._log('error', trace)
 
-    def verbose(self, msg):
+    def verbose(self, msg: str):
         '''
         Logs a verbose message.
         @param msg: The message to log.
@@ -147,7 +148,7 @@ class Log(object):
         '''
         self._log('verbose', msg)
 
-    def info(self, msg):
+    def info(self, msg: str):
         '''
         Logs an info message.
         @param msg: The message to log.
@@ -155,7 +156,7 @@ class Log(object):
         '''
         self._log('info', msg)
 
-    def warning(self, msg):
+    def warning(self, msg: str):
         '''
         Logs a warning message.
         @param msg: The message to log.
@@ -163,7 +164,7 @@ class Log(object):
         '''
         self._log('warning', msg)
 
-    def error(self, msg):
+    def error(self, msg: str):
         '''
         Logs an error message.
         @param msg: The message to log.
@@ -171,7 +172,7 @@ class Log(object):
         '''
         self._log('error', msg)
 
-    def critical(self, msg):
+    def critical(self, msg: str):
         '''
         Logs a critical message.
         @param msg: The message to log.

@@ -14,17 +14,18 @@ WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 License for the specific language governing permissions and limitations
 under the License.
 '''
-
-from fcntl import ioctl
 import re
-import six
 import struct
 import sys
-from termios import TIOCGWINSZ, TCSADRAIN, tcsetattr, tcgetattr
 import textwrap
 import tty
+from typing import TextIO
+
+from fcntl import ioctl
+from termios import TIOCGWINSZ, TCSADRAIN, tcsetattr, tcgetattr
 
 from .prefs import Prefs
+
 
 class Console(object):
     '''
@@ -38,10 +39,10 @@ class Console(object):
     _ansi_reset = _escape + '0m'
     _re_ansi_seq = re.compile('(\033\[..?m)')
 
-    _ansi_styles = {'bold':      1,
+    _ansi_styles = {'bold': 1,
                     'underline': 4,
-                    'blink':     5,
-                    'reverse':   7,
+                    'blink': 5,
+                    'reverse': 7,
                     'concealed': 8}
 
     colors = ['black', 'red', 'green', 'yellow',
@@ -52,7 +53,7 @@ class Console(object):
 
     __borg_state = {}
 
-    def __init__(self, stdin=sys.stdin, stdout=sys.stdout, stderr=sys.stderr):
+    def __init__(self, stdin: TextIO = sys.stdin, stdout: TextIO = sys.stdout, stderr: TextIO = sys.stderr):
         '''
         Initializes a Console instance.
         @param stdin: The console standard input.
@@ -68,7 +69,7 @@ class Console(object):
 
     # Public methods
 
-    def escape(self, sequence, reply_terminator=None):
+    def escape(self, sequence: str, reply_terminator: str = None):
         '''
         Sends an escape sequence to the console, and reads the reply terminated
         by reply_terminator. If reply_terminator is not specified, the reply
@@ -117,7 +118,7 @@ class Console(object):
         coords.reverse()
         return coords
 
-    def set_cursor_xy(self, xpos, ypos):
+    def set_cursor_xy(self, xpos: int, ypos: int):
         '''
         Set the cursor x, y coordinates.
         @param xpos: The x coordinate of the cursor.
@@ -127,7 +128,7 @@ class Console(object):
         '''
         self.escape("%d;%dH" % (ypos, xpos))
 
-    def raw_write(self, text, output=sys.stdout):
+    def raw_write(self, text: str, output: TextIO = sys.stdout):
         '''
         Raw console printing function.
         @param text: The text to print.
@@ -136,7 +137,7 @@ class Console(object):
         output.write(text)
         output.flush()
 
-    def display(self, text, no_lf=False, error=False):
+    def display(self, text: str, no_lf: bool = False, error: bool = False):
         '''
         Display a text with a default style.
         @param text: Text to display
@@ -155,7 +156,7 @@ class Console(object):
         if not no_lf:
             self.raw_write('\n', output=output)
 
-    def epy_write(self, text):
+    def epy_write(self, text: str):
         '''
         Renders and print and epytext-formatted text on the console.
         '''
@@ -167,13 +168,13 @@ class Console(object):
             if text[-index] == '\n':
                 clean_text = text[:-index]
                 if index != 1:
-                    clean_text += text[-index+1:]
+                    clean_text += text[-index + 1:]
                 break
         else:
             clean_text = text
         self.raw_write(clean_text, output=self._stdout)
 
-    def indent(self, text, margin=2):
+    def indent(self, text: str, margin: int = 2):
         '''
         Indents text by margin space.
         @param text: The text to be indented.
@@ -184,7 +185,7 @@ class Console(object):
             output += margin * ' ' + line + '\n'
         return output
 
-    def dedent(self, text):
+    def dedent(self, text: str):
         '''
         A convenience function to easily write multiline text blocks that
         will be later assembled in to a unique epytext string.
@@ -199,8 +200,8 @@ class Console(object):
 
         return text
 
-    def render_text(self, text, fgcolor=None, bgcolor=None, styles=None,
-                    open_end=False, todefault=False):
+    def render_text(self, text: str, fgcolor: str = None, bgcolor: str = None, styles: list[str] = None,
+                    open_end: bool = False, todefault: bool = False):
         '''
         Renders some text with ANSI console colors and attributes.
         @param fgcolor: ANSI color to use for text:
@@ -235,10 +236,10 @@ class Console(object):
                     if self.prefs['color_default']:
                         text += self._ansi_format \
                                 % (self._ansi_fgcolors[
-                                    self.prefs['color_default']], '')
+                                       self.prefs['color_default']], '')
         return text
 
-    def wordwrap(self, text, indent=0, startindex=0, splitchars=''):
+    def wordwrap(self, text: str, indent: int = 0, startindex: int = 0, splitchars: str = ''):
         '''
         Word-wrap the given string.  I.e., add newlines to the string such
         that any lines that are longer than terminal width or max_width
@@ -271,7 +272,7 @@ class Console(object):
                               text.expandtabs())
         else:
             chunks = re.split(r'( +|\n)', text.expandtabs())
-        result = [' '*(indent-startindex)]
+        result = [' ' * (indent - startindex)]
         charindex = max(indent, startindex)
         current_style = ''
         for chunknum, chunk in enumerate(chunks):
@@ -287,10 +288,10 @@ class Console(object):
 
             chunk_len = len(chunk_text)
             if (charindex + chunk_len > right and charindex > 0) \
-               or chunk == '\n':
+                    or chunk == '\n':
                 result[-1] = result[-1].rstrip()
                 result.append(self.render_text(
-                    '\n' + ' '*indent + current_style, open_end=True))
+                    '\n' + ' ' * indent + current_style, open_end=True))
                 charindex = indent
                 if chunk[:1] not in ('\n', ' '):
                     result.append(chunk)
@@ -301,4 +302,4 @@ class Console(object):
 
             current_style = next_style.split(self._ansi_reset)[-1]
 
-        return ''.join(result).rstrip()+'\n'
+        return ''.join(result).rstrip() + '\n'
