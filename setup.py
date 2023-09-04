@@ -38,8 +38,6 @@ setup(
     version='1.1.31',
     description='A framework to implement simple but nice CLIs.',
     license='Apache 2.0',
-    maintainer='Andy Grover',
-    maintainer_email='agrover@redhat.com',
     url='http://github.com/open-iscsi/configshell-fb',
     packages=['configshell', 'configshell_fb'],
     install_requires=[
