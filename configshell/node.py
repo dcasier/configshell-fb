@@ -1,4 +1,4 @@
-'''
+"""
 This file is part of ConfigShell.
 Copyright (c) 2011-2013 by Datera, Inc
 
@@ -13,7 +13,7 @@ distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
 WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 License for the specific language governing permissions and limitations
 under the License.
-'''
+"""
 
 from __future__ import annotations
 
@@ -30,11 +30,11 @@ class ExecutionError(Exception):
 
 
 class ConfigNode(object):
-    '''
+    """
     The ConfigNode class defines a common skeleton to be used by specific
     implementation. It is "purely virtual" (sorry for using non-pythonic
     vocabulary there ;-) ).
-    '''
+    """
     _path_separator = '/'
     _path_current = '.'
     _path_previous = '..'
@@ -82,13 +82,13 @@ class ConfigNode(object):
                  '''
 
     def __init__(self, name: str, parent: ConfigNode = None, shell: ConfigShell = None):
-        '''
+        """
         @param parent: The parent ConfigNode of the new object. If None, then
         the ConfigNode will be a root node.
         @type parent: ConfigNode or None
         @param shell: The shell to attach a root node to.
         @type shell: ConfigShell
-        '''
+        """
         self._name = name
         self._children: set[ConfigNode] = set()
         if parent is None:
@@ -163,7 +163,7 @@ class ConfigNode(object):
     # User interface types
 
     def ui_type_number(self, value=None, enum: bool = False, reverse: bool = False):
-        '''
+        """
         UI parameter type helper for number parameter type.
         @param value: Value to check against the type.
         @type value: anything
@@ -177,7 +177,7 @@ class ConfigNode(object):
         @return: c.f. parameter enum description.
         @rtype: str|list|None
         @raise ValueError: If the value does not check ok against the type.
-        '''
+        """
         if reverse:
             if value is not None:
                 return str(value)
@@ -203,7 +203,7 @@ class ConfigNode(object):
                 return value
 
     def ui_type_string(self, value=None, enum: bool = False, reverse: bool = False):
-        '''
+        """
         UI parameter type helper for string parameter type.
         @param value: Value to check against the type.
         @type value: anything
@@ -217,7 +217,7 @@ class ConfigNode(object):
         @return: c.f. parameter enum description.
         @rtype: str|list|None
         @raise ValueError: If the value does not check ok against the type.
-        '''
+        """
         if reverse:
             if value is not None:
                 return value
@@ -243,7 +243,7 @@ class ConfigNode(object):
                 return value
 
     def ui_type_bool(self, value=None, enum: bool = False, reverse: bool = False):
-        '''
+        """
         UI parameter type helper for boolean parameter type. Valid values are
         either 'true' or 'false'.
         @param value: Value to check against the type.
@@ -258,7 +258,7 @@ class ConfigNode(object):
         @return: c.f. parameter enum description.
         @rtype: str|list|None
         @raise ValueError: If the value does not check ok againts the type.
-        '''
+        """
         if reverse:
             if value:
                 return 'true'
@@ -280,7 +280,7 @@ class ConfigNode(object):
                              % (value, syntax))
 
     def ui_type_loglevel(self, value=None, enum: bool = False, reverse: bool = False):
-        '''
+        """
         UI parameter type helper for log level parameter type.
         @param value: Value to check against the type.
         @type value: anything
@@ -294,7 +294,7 @@ class ConfigNode(object):
         @return: c.f. parameter enum description.
         @rtype: str|list|None
         @raise ValueError: If the value does not check ok againts the type.
-        '''
+        """
         if reverse:
             if value is not None:
                 return value
@@ -315,7 +315,7 @@ class ConfigNode(object):
                              % (value, syntax))
 
     def ui_type_color(self, value=None, enum: bool = False, reverse: bool = False):
-        '''
+        """
         UI parameter type helper for color parameter type.
         @param value: Value to check against the type.
         @type value: anything
@@ -329,7 +329,7 @@ class ConfigNode(object):
         @return: c.f. parameter enum description.
         @rtype: str|list|None
         @raise ValueError: If the value does not check ok againts the type.
-        '''
+        """
         if reverse:
             if value is not None:
                 return value
@@ -352,7 +352,7 @@ class ConfigNode(object):
                              % (value, syntax))
 
     def ui_type_colordefault(self, value=None, enum: bool = False, reverse: bool = False):
-        '''
+        """
         UI parameter type helper for default color parameter type.
         @param value: Value to check against the type.
         @type value: anything
@@ -366,7 +366,7 @@ class ConfigNode(object):
         @return: c.f. parameter enum description.
         @rtype: str|list|None
         @raise ValueError: If the value does not check ok againts the type.
-        '''
+        """
         if reverse:
             if value is not None:
                 return value
@@ -391,7 +391,7 @@ class ConfigNode(object):
     # User interface get/set methods
 
     def ui_setgroup_global(self, parameter: str, value):
-        '''
+        """
         This is the backend method for setting parameters in configuration
         group 'global'. It simply uses the Prefs() backend to store the global
         preferences for the shell. Some of these group parameters are shared
@@ -410,11 +410,11 @@ class ConfigNode(object):
         @type parameter: str
         @param value: The value
         @type value: arbitrary
-        '''
+        """
         self.shell.prefs[parameter] = value
 
     def ui_getgroup_global(self, parameter: str):
-        '''
+        """
         This is the backend method for getting configuration parameters out of
         the global configuration group. It gets the values from the Prefs()
         backend. Eventual casting to str for UI display is handled by the ui
@@ -428,11 +428,11 @@ class ConfigNode(object):
         @type parameter: str
         @return: The parameter's value
         @rtype: arbitrary
-        '''
+        """
         return self.shell.prefs[parameter]
 
     def ui_eval_param(self, ui_value: str, type_: str, default):
-        '''
+        """
         Evaluates a user-provided parameter value using a given type helper.
         If the parameter value is None, the default will be returned. If the
         ui_value does not check out with the type helper, and execution error
@@ -447,7 +447,7 @@ class ConfigNode(object):
         @return: The evaluated parameter value.
         @rtype: depends on type
         @raise ExecutionError: If evaluation fails.
-        '''
+        """
         type_method = self.get_type_method(type_)
         if ui_value is None:
             return default
@@ -460,15 +460,15 @@ class ConfigNode(object):
                 return value
 
     def get_type_method(self, type_: str):
-        '''
+        """
         Returns the type helper method matching the type name.
-        '''
+        """
         return getattr(self, "%s%s" % (self.ui_type_method_prefix, type_))
 
     # User interface commands
 
     def ui_command_set(self, group: str = None, **parameter):
-        '''
+        """
         Sets one or more configuration parameters in the given group.
         The "global" group contains all global CLI preferences.
         Other groups are specific to the current path.
@@ -482,7 +482,7 @@ class ConfigNode(object):
         SEE ALSO
         ========
         get
-        '''
+        """
         if group is None:
             self.shell.con.epy_write('''
                                      AVAILABLE CONFIGURATION GROUPS
@@ -532,7 +532,7 @@ class ConfigNode(object):
             self.shell.con.display("Parameter %s is now '%s'." % (param, value))
 
     def ui_complete_set(self, parameters: dict[str, str], text: str, current_param: str):
-        '''
+        """
         Parameter auto-completion method for user command set.
         @param parameters: Parameters on the command line.
         @type parameters: dict
@@ -542,7 +542,7 @@ class ConfigNode(object):
         @type current_param: str
         @return: Possible completions
         @rtype: list of str
-        '''
+        """
         completions = []
 
         self.shell.log.debug("Called with params=%s, text='%s', current='%s'"
@@ -577,7 +577,7 @@ class ConfigNode(object):
         return completions
 
     def ui_command_get(self, group: str = None, *parameter):
-        '''
+        """
         Gets the value of one or more configuration parameters in the given
         group.
 
@@ -590,7 +590,7 @@ class ConfigNode(object):
         SEE ALSO
         ========
         set
-        '''
+        """
         if group is None:
             self.shell.con.epy_write('''
                                      AVAILABLE CONFIGURATION GROUPS
@@ -643,7 +643,7 @@ class ConfigNode(object):
                                    % (param, value, writable))
 
     def ui_complete_get(self, parameters: dict[str, str], text: str, current_param: str):
-        '''
+        """
         Parameter auto-completion method for user command get.
         @param parameters: Parameters on the command line.
         @type parameters: dict
@@ -653,7 +653,7 @@ class ConfigNode(object):
         @type current_param: str
         @return: Possible completions
         @rtype: list of str
-        '''
+        """
         completions = []
 
         self.shell.log.debug("Called with params=%s, text='%s', current='%s'"
@@ -679,7 +679,7 @@ class ConfigNode(object):
         return completions
 
     async def ui_command_ls(self, path: str = None, depth: int | str = None):
-        '''
+        """
         Display either the nodes tree relative to path or to the current node.
 
         PARAMETERS
@@ -698,7 +698,7 @@ class ConfigNode(object):
         SEE ALSO
         ========
         cd bookmarks
-        '''
+        """
         try:
             target = self.get_node(path)
         except ValueError as msg:
@@ -718,7 +718,7 @@ class ConfigNode(object):
 
     async def _render_tree(
             self, root: ConfigNode, margin: list[bool] = None, depth: int | str = None, do_list: bool = False):
-        '''
+        """
         Renders an ascii representation of a tree of ConfigNodes.
         @param root: The root node of the tree
         @type root: ConfigNode
@@ -734,7 +734,7 @@ class ConfigNode(object):
         @type do_list: bool
         @return: An ascii tree representation or (lines, paths).
         @rtype: str
-        '''
+        """
         lines = []
         paths = []
 
@@ -883,7 +883,7 @@ class ConfigNode(object):
                 return tree
 
     def ui_complete_ls(self, parameters: dict[str, str], text: str, current_param: str):
-        '''
+        """
         Parameter auto-completion method for user command ls.
         @param parameters: Parameters on the command line.
         @type parameters: dict
@@ -893,7 +893,7 @@ class ConfigNode(object):
         @type current_param: str
         @return: Possible completions
         @rtype: list of str
-        '''
+        """
         if current_param == 'path':
             (basedir, slash, partial_name) = text.rpartition('/')
             basedir = basedir + slash
@@ -935,7 +935,7 @@ class ConfigNode(object):
                     if (text + number).startswith(text)]
 
     async def ui_command_cd(self, path: str = None):
-        '''
+        """
         Change current path to path.
 
         The path is constructed just like a unix path, with "/" as separator
@@ -968,7 +968,7 @@ class ConfigNode(object):
         SEE ALSO
         ========
         ls cd
-        '''
+        """
         self.shell.log.debug("Changing current node to '%s'." % path)
 
         if self.shell.prefs['path_history'] is None:
@@ -1057,7 +1057,7 @@ class ConfigNode(object):
         return target_node
 
     def _lines_walker(self, lines: list[str], start_pos: int):
-        '''
+        """
         Using the curses urwid library, displays all lines passed as argument,
         and after allowing selection of one line using up, down and enter keys,
         returns its index.
@@ -1067,7 +1067,7 @@ class ConfigNode(object):
         @type start_pos: int
         @return: the index of the selected line.
         @rtype: int
-        '''
+        """
         import urwid
 
         palette = [('header', 'white', 'black'),
@@ -1100,7 +1100,7 @@ class ConfigNode(object):
         return listbox.focus_position
 
     def ui_complete_cd(self, parameters: dict[str, str], text: str, current_param: str):
-        '''
+        """
         Parameter auto-completion method for user command cd.
         @param parameters: Parameters on the command line.
         @type parameters: dict
@@ -1110,7 +1110,7 @@ class ConfigNode(object):
         @type current_param: str
         @return: Possible completions
         @rtype: list of str
-        '''
+        """
         if current_param == 'path':
             completions = self.ui_complete_ls(parameters, text, current_param)
             completions.extend([nav for nav in ['<', '>']
@@ -1118,9 +1118,9 @@ class ConfigNode(object):
             return completions
 
     def ui_command_help(self, topic: str = None):
-        '''
+        """
         Displays the manual page for a topic, or list available topics.
-        '''
+        """
         commands = self.list_commands()
         if topic is None:
             msg = self.shell.con.dedent(self.help_intro)
@@ -1166,7 +1166,7 @@ class ConfigNode(object):
         self.shell.con.epy_write(msg)
 
     def ui_complete_help(self, parameters: dict[str, str], text: str, current_param: str):
-        '''
+        """
         Parameter auto-completion method for user command help.
         @param parameters: Parameters on the command line.
         @type parameters: dict
@@ -1176,7 +1176,7 @@ class ConfigNode(object):
         @type current_param: str
         @return: Possible completions
         @rtype: list of str
-        '''
+        """
         if current_param == 'topic':
             # TODO Add other types of topics
             topics = self.list_commands()
@@ -1191,13 +1191,13 @@ class ConfigNode(object):
             return completions
 
     def ui_command_exit(self):
-        '''
+        """
         Exits the command line interface.
-        '''
+        """
         return 'EXIT'
 
     def ui_command_bookmarks(self, action: str, bookmark: str = None):
-        '''
+        """
         Manage your bookmarks.
 
         Note that you can also access your bookmarks with the
@@ -1232,7 +1232,7 @@ class ConfigNode(object):
         SEE ALSO
         ========
         ls cd
-        '''
+        """
         if action == 'add' and bookmark:
             if bookmark in self.shell.prefs['bookmarks']:
                 raise ExecutionError("Bookmark %s already exists." % bookmark)
@@ -1274,7 +1274,7 @@ class ConfigNode(object):
             raise ExecutionError("Syntax error, see 'help bookmarks'.")
 
     def ui_complete_bookmarks(self, parameters: dict[str, str], text: str, current_param: str):
-        '''
+        """
         Parameter auto-completion method for user command bookmarks.
         @param parameters: Parameters on the command line.
         @type parameters: dict
@@ -1284,7 +1284,7 @@ class ConfigNode(object):
         @type current_param: str
         @return: Possible completions
         @rtype: list of str
-        '''
+        """
         if current_param == 'action':
             completions = [action for action in ['add', 'del', 'go', 'show']
                            if action.startswith(text)]
@@ -1303,13 +1303,13 @@ class ConfigNode(object):
             return completions
 
     def ui_command_pwd(self):
-        '''
+        """
         Displays the current path.
 
         SEE ALSO
         ========
         ls cd
-        '''
+        """
         self.shell.con.display(self.path)
 
     # Private methods
@@ -1321,31 +1321,31 @@ class ConfigNode(object):
             return self.name
 
     def _get_parent(self):
-        '''
+        """
         Get this node's parent.
         @return: The node's parent.
         @rtype: ConfigNode
-        '''
+        """
         return self._parent
 
     def _get_name(self):
-        '''
+        """
         @return: The node's name.
         @rtype: str
-        '''
+        """
         return self._name
 
     def _set_name(self, name: str):
-        '''
+        """
         Sets the node's name.
-        '''
+        """
         self._name = name
 
     def _get_path(self):
-        '''
+        """
         @returns: The absolute path for this node.
         @rtype: str
-        '''
+        """
         subpath = self._path_separator + self.name
         if self.is_root():
             return self._path_separator
@@ -1355,17 +1355,17 @@ class ConfigNode(object):
             return self._parent.path + subpath
 
     def _list_children(self):
-        '''
+        """
         Lists the children of this node.
         @return: The set of children nodes.
         @rtype: set of ConfigNode
-        '''
+        """
         return self._children
 
     def _get_shell(self):
-        '''
+        """
         Gets the shell attached to ConfigNode tree.
-        '''
+        """
         if self.is_root():
             return self._shell
         else:
@@ -1374,17 +1374,17 @@ class ConfigNode(object):
     # Public methods
 
     def summary(self):
-        '''
+        """
         Returns a tuple with a status/description string for this node and a
         health flag, to be displayed along the node's name in object trees,
         etc.
         @returns: (description, is_healthy)
         @rtype: (str, bool or None)
-        '''
+        """
         return ('', None)
 
     def execute_command(self, command: str, pparams: list[str] = None, kparams: dict[str, str] = None):
-        '''
+        """
         Execute a user command on the node. This works by finding out which is
         the support command method, using ConfigNode naming convention:
         The support method's name is 'PREFIX_COMMAND', where PREFIX is defined
@@ -1400,7 +1400,7 @@ class ConfigNode(object):
         See ConfigShell._execute_command() for expected return values and how
         they are interpreted by ConfigShell.
         @rtype: str or ConfigNode or None
-        '''
+        """
         if pparams is None:
             pparams = []
         if kparams is None:
@@ -1419,7 +1419,7 @@ class ConfigNode(object):
         return method(*pparams, **kparams)
 
     def assert_params(self, method, pparams: list[str], kparams: dict[str, str]):
-        '''
+        """
         Checks that positional and keyword parameters match a method
         definition, or raise an ExecutionError.
         @param method: The method to check call signature against.
@@ -1429,7 +1429,7 @@ class ConfigNode(object):
         @param kparams: The keyword parameters.
         @type kparams: dict
         @raise ExecutionError: When the check fails.
-        '''
+        """
         spec = inspect.getfullargspec(method)
         args = spec.args[1:]
         pp = spec.varargs
@@ -1503,10 +1503,10 @@ class ConfigNode(object):
                 % (nb_standard_params, nb_max_params))
 
     def list_commands(self):
-        '''
+        """
         @return: The list of user commands available for this node.
         @rtype: list of str
-        '''
+        """
         prefix = self.ui_command_method_prefix
         prefix_len = len(prefix)
         return tuple([name[prefix_len:] for name in dir(self)
@@ -1514,33 +1514,33 @@ class ConfigNode(object):
                       and inspect.ismethod(getattr(self, name))])
 
     def get_group_getter(self, group: str):
-        '''
+        """
         @param group: A valid configuration group
         @type group: str
         @return: The getter method for the configuration group.
         @rtype: method object
-        '''
+        """
         prefix = self.ui_getgroup_method_prefix
         return getattr(self, '%s%s' % (prefix, group))
 
     def get_group_setter(self, group: str):
-        '''
+        """
         @param group: A valid configuration group
         @type group: str
         @return: The setter method for the configuration group.
         @rtype: method object
-        '''
+        """
         prefix = self.ui_setgroup_method_prefix
         return getattr(self, '%s%s' % (prefix, group))
 
     def get_command_method(self, command: str):
-        '''
+        """
         @param command: The command to get the method for.
         @type command: str
         @return: The user command support method.
         @rtype: method
         @raise ValueError: If the command is not found.
-        '''
+        """
         prefix = self.ui_command_method_prefix
         if command in self.list_commands():
             return getattr(self, '%s%s' % (prefix, command))
@@ -1550,12 +1550,12 @@ class ConfigNode(object):
             raise ValueError('No command named "%s".' % command)
 
     def get_completion_method(self, command: str):
-        '''
+        """
         @return: A user command's completion method or None.
         @rtype: method or None
         @param command: The command to get the completion method for.
         @type command: str
-        '''
+        """
         prefix = self.ui_complete_method_prefix
         try:
             method = getattr(self, '%s%s' % (prefix, command))
@@ -1565,19 +1565,19 @@ class ConfigNode(object):
             return method
 
     def get_command_description(self, command: str):
-        '''
+        """
         @return: An description string for a user command.
         @rtype: str
         @param command: The command to describe.
         @type command: str
-        '''
+        """
         doc = self.get_command_method(command).__doc__
         if not doc:
             doc = "No description available."
         return self.shell.con.dedent(doc)
 
     def get_command_syntax(self, command: str):
-        '''
+        """
         @return: A list of formatted syntax descriptions for the command:
             - (syntax, comments, default_values)
             - syntax is the syntax definition line.
@@ -1586,7 +1586,7 @@ class ConfigNode(object):
         @rtype: (str, [str...], str)
         @param command: The command to document.
         @type command: str
-        '''
+        """
         method = self.get_command_method(command)
         spec = inspect.getfullargspec(method)
         parameters = spec.args[1:]
@@ -1632,7 +1632,7 @@ class ConfigNode(object):
         return syntax, comments, default_values
 
     def get_command_signature(self, command: str):
-        '''
+        """
         Get a command's signature.
         @param command: The command to get the signature of.
         @type command: str
@@ -1641,7 +1641,7 @@ class ConfigNode(object):
         booleans set to True is the command accepts an arbitrary number of,
         respectively, pparams and kparams.
         @rtype: ([str...], bool, bool)
-        '''
+        """
         method = self.get_command_method(command)
         spec = inspect.getfullargspec(method)
         parameters = spec.args[1:]
@@ -1660,10 +1660,10 @@ class ConfigNode(object):
         return parameters, free_pparams, free_kparams
 
     def get_root(self):
-        '''
+        """
         @return: The root node of the nodes tree.
         @rtype: ConfigNode
-        '''
+        """
         if self.is_root():
             return self
         else:
@@ -1671,7 +1671,7 @@ class ConfigNode(object):
 
     def define_config_group_param(self, group: str, param: str, type_: str,
                                   description: str = None, writable: bool = True):
-        '''
+        """
         Helper to define configuration group parameters.
         @param group: The configuration group to add the parameter to.
         @type group: str
@@ -1681,7 +1681,7 @@ class ConfigNode(object):
         @type description: str
         @param writable: Whether or not this would be a rw or ro parameter.
         @type writable: bool
-        '''
+        """
         if group not in self._configuration_groups:
             self._configuration_groups[group] = {}
 
@@ -1698,20 +1698,20 @@ class ConfigNode(object):
             [type_, description, writable]
 
     def list_config_groups(self):
-        '''
+        """
         Lists the configuration group names.
-        '''
+        """
         return self._configuration_groups.keys()
 
     def list_group_params(self, group: str, writable: bool = None):
-        '''
+        """
         Lists the parameters from group matching the optional param, writable
         and type supplied (if none is supplied, returns all group parameters.
         @param group: The group to list parameters of.
         @type group: str
         @param writable: Optional writable flag filter.
         @type writable: bool
-        '''
+        """
         if group not in self.list_config_groups():
             return []
         else:
@@ -1726,7 +1726,7 @@ class ConfigNode(object):
             return params
 
     def get_group_param(self, group: str, param: str):
-        '''
+        """
         @param group: The configuration group to retreive the parameter from.
         @type group: str
         @param param: The parameter name.
@@ -1735,7 +1735,7 @@ class ConfigNode(object):
         name, writable, description, group and type fields.
         @rtype: dict
         @raise ValueError: If the parameter or group does not exist.
-        '''
+        """
         if group not in self.list_config_groups():
             raise ValueError("Not such configuration group %s" % group)
         if param not in self.list_group_params(group):
@@ -1763,23 +1763,23 @@ class ConfigNode(object):
                       doc="Gets the node's parent.")
 
     def is_root(self):
-        '''
+        """
         @return: Wether or not we are a root node.
         @rtype: bool
-        '''
+        """
         if self._parent is None:
             return True
         else:
             return False
 
     def get_child(self, name: str):
-        '''
+        """
         @param name: The child's name.
         @type name: str
         @return: Our child named by name.
         @rtype: ConfigNode
         @raise ValueError: If there is no child named by name.
-        '''
+        """
         for child in self._children:
             if child.name == name:
                 return child
@@ -1788,27 +1788,27 @@ class ConfigNode(object):
                              % (self.path.rstrip('/'), name))
 
     def remove_child(self, child: ConfigNode):
-        '''
+        """
         Removes a child from our children's list.
         @param child: The child to remove.
         @type child: ConfigNode
-        '''
+        """
         self._children.remove(child)
 
     def get_node(self, path: str):
-        '''
+        """
         Looks up a node by path in the nodes tree.
         @param path: The node's path.
         @type path: str
         @return: The node that has the given path.
         @rtype: ConfigNode
         @raise ValueError: If there is no node with that path.
-        '''
+        """
 
         def adjacent_node(name: str):
-            '''
+            """
             Returns an adjacent node or ourself.
-            '''
+            """
             if name == self._path_current:
                 return self
             elif name == self._path_previous:

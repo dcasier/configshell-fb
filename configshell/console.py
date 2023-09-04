@@ -1,4 +1,4 @@
-'''
+"""
 This file is part of ConfigShell.
 Copyright (c) 2011-2013 by Datera, Inc
 
@@ -13,7 +13,7 @@ distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
 WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 License for the specific language governing permissions and limitations
 under the License.
-'''
+"""
 import re
 import struct
 import sys
@@ -28,11 +28,11 @@ from .prefs import Prefs
 
 
 class Console(object):
-    '''
+    """
     Implements various utility methods providing a console UI support toolkit,
     most notably an epytext-to-console text renderer using ANSI escape
     sequences. It uses the Borg pattern to share state between instances.
-    '''
+    """
     _max_width = 132
     _escape = '\033['
     _ansi_format = _escape + '%dm%s'
@@ -54,13 +54,11 @@ class Console(object):
     __borg_state = {}
 
     def __init__(self, stdin: TextIO = sys.stdin, stdout: TextIO = sys.stdout, stderr: TextIO = sys.stderr):
-        '''
+        """
         Initializes a Console instance.
         @param stdin: The console standard input.
-        @type stdin: file object
         @param stdout: The console standard output.
-        @type stdout: file object
-        '''
+        """
         self.__dict__ = self.__borg_state
         self._stdout = stdout
         self._stdin = stdin
@@ -70,14 +68,14 @@ class Console(object):
     # Public methods
 
     def escape(self, sequence: str, reply_terminator: str = None):
-        '''
+        """
         Sends an escape sequence to the console, and reads the reply terminated
         by reply_terminator. If reply_terminator is not specified, the reply
         will not be read.
         @type sequence: str
         @param reply_terminator: The expected end-of-reply marker.
         @type reply_terminator: str
-        '''
+        """
         attributes = tcgetattr(self._stdin)
         tty.setraw(self._stdin)
         try:
@@ -94,10 +92,10 @@ class Console(object):
             return reply
 
     def get_width(self):
-        '''
+        """
         Returns the console width, or maximum width if we are not a terminal
         device.
-        '''
+        """
         try:
             winsize = struct.pack("HHHH", 0, 0, 0, 0)
             winsize = ioctl(self._stdout.fileno(), TIOCGWINSZ, winsize)
@@ -111,40 +109,40 @@ class Console(object):
         return width
 
     def get_cursor_xy(self):
-        '''
+        """
         Get the current text cursor x, y coordinates.
-        '''
+        """
         coords = [int(coord) for coord in self.escape("6n", "R")]
         coords.reverse()
         return coords
 
     def set_cursor_xy(self, xpos: int, ypos: int):
-        '''
+        """
         Set the cursor x, y coordinates.
         @param xpos: The x coordinate of the cursor.
         @type xpos: int
         @param ypos: The y coordinate of the cursor.
         @type ypos: int
-        '''
+        """
         self.escape("%d;%dH" % (ypos, xpos))
 
     def raw_write(self, text: str, output: TextIO = sys.stdout):
-        '''
+        """
         Raw console printing function.
         @param text: The text to print.
         @type text: str
-        '''
+        """
         output.write(text)
         output.flush()
 
     def display(self, text: str, no_lf: bool = False, error: bool = False):
-        '''
+        """
         Display a text with a default style.
         @param text: Text to display
         @type text: str
         @param no_lf: Do not display a line feed.
         @type no_lf: bool
-        '''
+        """
         text = self.render_text(text)
 
         if error:
@@ -157,9 +155,9 @@ class Console(object):
             self.raw_write('\n', output=output)
 
     def epy_write(self, text: str):
-        '''
+        """
         Renders and print and epytext-formatted text on the console.
-        '''
+        """
         text = self.dedent(text)
         # We need to remove the last line feed, but there might be
         # escape characters after it...
@@ -175,22 +173,22 @@ class Console(object):
         self.raw_write(clean_text, output=self._stdout)
 
     def indent(self, text: str, margin: int = 2):
-        '''
+        """
         Indents text by margin space.
         @param text: The text to be indented.
         @type text: str
-        '''
+        """
         output = ''
         for line in text.split('\n'):
             output += margin * ' ' + line + '\n'
         return output
 
     def dedent(self, text: str):
-        '''
+        """
         A convenience function to easily write multiline text blocks that
         will be later assembled in to a unique epytext string.
         It removes heading newline chars and common indentation.
-        '''
+        """
         for i in range(len(text)):
             if text[i] != '\n':
                 break
@@ -202,7 +200,7 @@ class Console(object):
 
     def render_text(self, text: str, fgcolor: str = None, bgcolor: str = None, styles: list[str] = None,
                     open_end: bool = False, todefault: bool = False):
-        '''
+        """
         Renders some text with ANSI console colors and attributes.
         @param fgcolor: ANSI color to use for text:
             black, red, green, yellow, blue, magenta. cyan. white
@@ -218,7 +216,7 @@ class Console(object):
         @param todefault: Instead of resetting style at the end of the
         output, reset to default color. Only if not open_end.
         @type todefault: bool
-        '''
+        """
         if self.prefs['color_mode'] and self._stdout.isatty():
             if fgcolor is None:
                 if self.prefs['color_default']:
@@ -240,7 +238,7 @@ class Console(object):
         return text
 
     def wordwrap(self, text: str, indent: int = 0, startindex: int = 0, splitchars: str = ''):
-        '''
+        """
         Word-wrap the given string.  I.e., add newlines to the string such
         that any lines that are longer than terminal width or max_width
         are broken into shorter lines (at the first whitespace sequence that
@@ -264,7 +262,7 @@ class Console(object):
             be used to split a line.  (E.g., use '/\\' to allow path names
             to be split over multiple lines.)
         @rtype: str
-        '''
+        """
         right = self.get_width()
         if splitchars:
             chunks = re.split(r'( +|\n|[^ \n%s]*[%s])' %

@@ -1,4 +1,4 @@
-'''
+"""
 This file is part of ConfigShell.
 Copyright (c) 2011-2013 by Datera, Inc
 
@@ -13,7 +13,9 @@ distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
 WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 License for the specific language governing permissions and limitations
 under the License.
-'''
+"""
+
+from __future__ import annotations
 
 import os
 # A fix for frozen packages
@@ -36,12 +38,12 @@ from .node import ConfigNode, ExecutionError
 
 
 def handle_sigint(signum, frame):
-    '''
+    """
     Raise KeyboardInterrupt when we get a SIGINT.
     This is normally done by python, but even after patching
     pyinstaller 1.4 to ignore SIGINT in the C wrapper code, we
     still have to do the translation ourselves.
-    '''
+    """
     raise KeyboardInterrupt
 
 
@@ -71,7 +73,7 @@ else:
 
 
 class ConfigShell(object):
-    '''
+    """
     This is a simple CLI command interpreter that can be used both in
     interactive or non-interactive modes.
     It is based on a tree of ConfigNode objects, which can be navigated.
@@ -88,7 +90,7 @@ class ConfigShell(object):
     Interactive sessions can be saved/loaded automatically by ConfigShell is a
     writable session directory is supplied. This includes command-line history,
     current node and global parameters.
-    '''
+    """
 
     default_prefs = {'color_path': 'magenta',
                      'color_command': 'cyan',
@@ -111,11 +113,11 @@ class ConfigShell(object):
     _current_completions = []
 
     def __init__(self, preferences_dir: str = None):
-        '''
+        """
         Creates a new ConfigShell.
         @param preferences_dir: Directory to load/save preferences from/to
         @type preferences_dir: str
-        '''
+        """
         self._current_node = None
         self._root_node = None
         self._exit = False
@@ -191,20 +193,20 @@ class ConfigShell(object):
     # Private methods
 
     def _display_completions(self, substitution: str, matches: list[str], max_length: int):
-        '''
+        """
         Display the completions. Invoked by readline.
         @param substitution: string to complete
         @param matches: list of possible matches
         @param max_length: length of the longest matching item
-        '''
+        """
         x_orig = self.con.get_cursor_xy()[0]
         width = self.con.get_width()
         max_length += 2
 
         def just(text):
-            '''
+            """
             Justifies the text to the max match length.
-            '''
+            """
             return text.ljust(max_length, " ")
 
         # Sort and colorize the matches
@@ -261,7 +263,7 @@ class ConfigShell(object):
         self.con.set_cursor_xy(x_orig, y_pos)
 
     def _complete_token_command(self, text: str, path: str, command: str):
-        '''
+        """
         Completes a partial command token, which could also be the beginning
         of a path.
         @param path: Path of the target ConfigNode.
@@ -272,7 +274,7 @@ class ConfigShell(object):
         @type text: str
         @return: Possible completions for the token.
         @rtype: list of str
-        '''
+        """
         completions = []
         target = self._current_node.get_node(path)
         commands = target.list_commands()
@@ -332,13 +334,13 @@ class ConfigShell(object):
         return completions
 
     def _complete_token_path(self, text: str):
-        '''
+        """
         Completes a partial path token.
         @param text: Current text being typed by the user.
         @type text: str
         @return: Possible completions for the token.
         @rtype: list of str
-        '''
+        """
         completions = []
         if text.endswith('.'):
             text = text + '/'
@@ -385,7 +387,7 @@ class ConfigShell(object):
         return completions
 
     def _complete_token_pparam(self, text: str, path: str, command: str, pparams: list[str], kparams: dict[str, str]):
-        '''
+        """
         Completes a positional parameter token, which can also be the keywork
         part of a kparam token, as before the '=' sign is on the line, the
         parser cannot know better.
@@ -401,7 +403,7 @@ class ConfigShell(object):
         @type text: str
         @return: Possible completions for the token.
         @rtype: list of str
-        '''
+        """
         completions = []
         target = self._current_node.get_node(path)
         cmd_params, free_pparams, free_kparams = \
@@ -529,7 +531,7 @@ class ConfigShell(object):
         return completions
 
     def _complete_token_kparam(self, text: str, path: str, command: str, pparams: list[str], kparams: dict[str, str]):
-        '''
+        """
         Completes a keyword=value parameter token.
         @param path: Path of the target ConfigNode.
         @type path: str
@@ -543,7 +545,7 @@ class ConfigShell(object):
         @type text: str
         @return: Possible completions for the token.
         @rtype: list of str
-        '''
+        """
         self.log.debug("Called for text='%s'" % text)
         target = self._current_node.get_node(path)
         cmd_params = target.get_command_signature(command)[0]
@@ -576,7 +578,7 @@ class ConfigShell(object):
         return ["%s=%s" % (keyword, completion) for completion in completions]
 
     def _complete(self, text: str, state: int):
-        '''
+        """
         Text completion method, directly called by readline.
         Finds out what token the user wants completion for, and calls the
         _dispatch_completion() to get the possible completions.
@@ -586,7 +588,7 @@ class ConfigShell(object):
         @type text: str
         @returns: The next possible completion for text.
         @rtype: str
-        '''
+        """
         if state == 0:
             cmdline = readline.get_line_buffer()
             self._current_completions = []
@@ -635,7 +637,7 @@ class ConfigShell(object):
 
     def _dispatch_completion(self, path: str, command: str,
                              pparams: list[str], kparams: dict[str, str], text: str, current_token: str):
-        '''
+        """
         This method takes care of dispatching the current completion request
         from readline (via the _complete() method) to the relevant token
         completion methods. It has to cope with the fact that the commandline
@@ -658,7 +660,7 @@ class ConfigShell(object):
         @type current_token: str
         @return: Possible completions for the token.
         @rtype: list of str
-        '''
+        """
         completions = []
 
         self.log.debug("Dispatching completion for %s token. "
@@ -700,9 +702,9 @@ class ConfigShell(object):
         return completions
 
     def _get_prompt(self):
-        '''
+        """
         Returns the command prompt string.
-        '''
+        """
         prompt_path = self._current_node.path
         prompt_length = self.prefs['prompt_length']
 
@@ -718,13 +720,13 @@ class ConfigShell(object):
             return "%s> " % prompt_path
 
     async def _cli_loop_async(self):
-        '''
+        """
         Starts the configuration shell interactive loop, that:
             - Goes to the last current path
             - Displays the prompt
             - Waits for user input
             - Runs user command
-        '''
+        """
         while not self._exit:
             try:
                 readline.parse_and_bind("tab: complete")
@@ -746,7 +748,7 @@ class ConfigShell(object):
                     self._save_history = False
 
     def _parse_cmdline(self, line: str):
-        '''
+        """
         Parses the command line entered by the user. This is a wrapper around
         the actual pyparsing parser that pre-chews the result trees to
         cleanly extract the tokens we care for (parameters, path, command).
@@ -755,7 +757,7 @@ class ConfigShell(object):
         @return: (result_trees, path, command, pparams, kparams),
         pparams being positional parameters and kparams the keyword=value.
         @rtype: (pyparsing.ParseResults, str, str, list, dict)
-        '''
+        """
         self.log.debug("Parsing commandline.")
         path = ''
         command = ''
@@ -777,8 +779,8 @@ class ConfigShell(object):
                        + "kparams=%s" % str(kparams))
         return (parse_results, path, command, pparams, kparams)
 
-    async def _execute_command(self, path: str, command: str, pparamsl: list[str], kparams: dict[str, str]):
-        '''
+    async def _execute_command(self, path: str, command: str, pparams: list[str], kparams: dict[str, str]):
+        """
         Calls the target node to execute a command.
         Behavior depends on the target node command's result:
             - An 'EXIT' string will trigger shell exit.
@@ -792,7 +794,7 @@ class ConfigShell(object):
         @type pparams: list
         @param kparams: The keyword=value parameters to use.
         @type kparams: dict
-        '''
+        """
         if path.endswith('*'):
             path = path.rstrip('*')
             iterall = True
@@ -836,7 +838,7 @@ class ConfigShell(object):
     # Public methods
 
     async def run_cmdline_async(self, cmdline: str):
-        '''
+        """
         Runs the specified command. Global commands are checked first,
         then local commands from the current node.
 
@@ -845,21 +847,21 @@ class ConfigShell(object):
 
         @param cmdline: The command line to run
         @type cmdline: str
-        '''
+        """
         if cmdline:
             self.log.verbose("Running command line '%s'." % cmdline)
             path, command, pparams, kparams = self._parse_cmdline(cmdline)[1:]
             await self._execute_command(path, command, pparams, kparams)
 
     def run_script(self, script_path: str, exit_on_error: bool = True):
-        '''
+        """
         Runs the script located at script_path.
         Script runs always start from the root context.
         @param script_path: File path of the script to run
         @type script_path: str
         @param exit_on_error: If True, stops the run if an error occurs
         @type exit_on_error: bool
-        '''
+        """
         try:
             script_fd = open(script_path, 'r')
             self.run_stdin(script_fd, exit_on_error)
@@ -869,14 +871,14 @@ class ConfigShell(object):
             script_fd.close()
 
     def run_stdin(self, file_descriptor: TextIO = sys.stdin, exit_on_error: bool = True):
-        '''
+        """
         Reads commands to be run from a file descriptor, stdin by default.
         The run always starts from the root context.
         @param file_descriptor: The file descriptor to read commands from
         @type file_descriptor: file object
         @param exit_on_error: If True, stops the run if an error occurs
         @type exit_on_error: bool
-        '''
+        """
         self._current_node = self._root_node
         for cmdline in file_descriptor:
             try:
@@ -889,9 +891,9 @@ class ConfigShell(object):
                 self.log.exception("Keep running after an error.")
 
     async def run_interactive_async(self):
-        '''
+        """
         Starts interactive CLI mode.
-        '''
+        """
         history = self.prefs['path_history']
         index = self.prefs['path_history_index']
         if history and index:
@@ -914,9 +916,9 @@ class ConfigShell(object):
                 readline.set_completer(old_completer)
 
     def attach_root_node(self, root_node: ConfigNode):
-        '''
+        """
         @param root_node: The root ConfigNode object
         @type root_node: ConfigNode
-        '''
+        """
         self._current_node = root_node
         self._root_node = root_node
