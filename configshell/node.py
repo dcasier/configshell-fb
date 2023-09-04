@@ -106,8 +106,7 @@ class ConfigNode(object):
         if self._parent is not None:
             for sibling in self._parent._children:
                 if sibling.name == name:
-                    raise ValueError("Name '%s' already used by a sibling."
-                                     % self._name)
+                    raise ValueError(f'Name {self._name} already used by a sibling.')
             self._parent._children.add(self)
 
         self._configuration_groups: dict[str, list[str, str, str]] = {}
@@ -192,8 +191,7 @@ class ConfigNode(object):
             try:
                 value = int(value)
             except ValueError:
-                raise ValueError("Syntax error, '%s' is not a %s."
-                                 % (value, syntax))
+                raise ValueError(f'Syntax error, {value} is not a {syntax}.')
             else:
                 return value
 
@@ -229,8 +227,7 @@ class ConfigNode(object):
             try:
                 value = str(value)
             except ValueError:
-                raise ValueError("Syntax error, '%s' is not a %s."
-                                 % (value, syntax))
+                raise ValueError(f'Syntax error, {value} is not a {syntax}.')
             else:
                 return value
 
@@ -265,8 +262,7 @@ class ConfigNode(object):
         elif value.lower() == 'false':
             return False
         else:
-            raise ValueError("Syntax error, '%s' is not %s."
-                             % (value, syntax))
+            raise ValueError(f'Syntax error, {value} is not a {syntax}.')
 
     def ui_type_loglevel(self, value=None, enum: bool = False, reverse: bool = False):
         """
@@ -297,8 +293,7 @@ class ConfigNode(object):
         elif value in type_enum:
             return value
         else:
-            raise ValueError("Syntax error, '%s' is not %s"
-                             % (value, syntax))
+            raise ValueError(f'Syntax error, {value} is not a {syntax}.')
 
     def ui_type_color(self, value=None, enum: bool = False, reverse: bool = False):
         """
@@ -331,8 +326,7 @@ class ConfigNode(object):
         elif value in type_enum:
             return value
         else:
-            raise ValueError("Syntax error, '%s' is not %s"
-                             % (value, syntax))
+            raise ValueError(f'Syntax error, {value} is not a {syntax}.')
 
     def ui_type_colordefault(self, value=None, enum: bool = False, reverse: bool = False):
         """
@@ -365,8 +359,7 @@ class ConfigNode(object):
         elif value in type_enum:
             return value
         else:
-            raise ValueError("Syntax error, '%s' is not %s"
-                             % (value, syntax))
+            raise ValueError(f'Syntax error, {value} is not a {syntax}.')
 
     # User interface get/set methods
 
@@ -416,7 +409,7 @@ class ConfigNode(object):
         will be raised.
 
         @param ui_value: The user provided parameter value.
-        @param type: The ui_type to be used
+        @param type_: The ui_type to be used
         @param default: The default value to return.
         @return: The evaluated parameter value.
         @rtype: depends on type
@@ -437,7 +430,7 @@ class ConfigNode(object):
         """
         Returns the type helper method matching the type name.
         """
-        return getattr(self, "%s%s" % (self.ui_type_method_prefix, type_))
+        return getattr(self, f'{self.ui_type_method_prefix}{type_}')
 
     # User interface commands
 
@@ -465,9 +458,9 @@ class ConfigNode(object):
                                      ''' % ' '.join(self.list_config_groups()))
         elif not parameter:
             if group not in self.list_config_groups():
-                raise ExecutionError("Unknown configuration group: %s" % group)
+                raise ExecutionError(f'Unknown configuration group: {group}')
 
-            section = "%s CONFIG GROUP" % group.upper()
+            section = f'{group.upper()} CONFIG GROUP'
             underline1 = ''.ljust(len(section), '=')
             parameters = ''
             for p_name in self.list_group_params(group, writable=True):
@@ -1409,9 +1402,7 @@ class ConfigNode(object):
         self.shell.log.debug("Variable keyword params: %s" % kw)
 
         if len(missing_params) == 1:
-            raise ExecutionError(
-                "Missing required parameter %s"
-                % missing_params[0])
+            raise ExecutionError(f"Missing required parameter '{missing_params[0]}'")
         elif missing_params:
             raise ExecutionError(
                 "Missing required parameters %s"
@@ -1419,9 +1410,7 @@ class ConfigNode(object):
 
         if kw is None:
             if len(unexpected_keywords) == 1:
-                raise ExecutionError(
-                    "Unexpected keyword parameter '%s'."
-                    % unexpected_keywords[0])
+                raise ExecutionError(f"Unexpected keyword parameter '{unexpected_keywords[0]}'.")
             elif unexpected_keywords:
                 raise ExecutionError(
                     "Unexpected keyword parameters %s."
@@ -1430,21 +1419,15 @@ class ConfigNode(object):
         all_params.extend(kparams.keys())
         for param in all_params:
             if all_params.count(param) > 1:
-                raise ExecutionError(
-                    "Duplicate parameter %s."
-                    % param)
+                raise ExecutionError(f"Duplicate parameter '{param}'.")
 
         if nb_opt_params == 0 \
                 and nb_standard_params != nb_min_params \
                 and pp is None:
-            raise ExecutionError(
-                "Got %d positionnal parameters, expected exactly %d."
-                % (nb_standard_params, nb_min_params))
+            raise ExecutionError(f'Got {nb_standard_params} positionnal parameters, expected exactly {nb_min_params}.')
 
         if nb_standard_params > nb_max_params and pp is None:
-            raise ExecutionError(
-                "Got %d positionnal parameters, expected at most %d."
-                % (nb_standard_params, nb_max_params))
+            raise ExecutionError(f'Got {nb_standard_params} positionnal parameters, expected at most {nb_max_params}.')
 
     def list_commands(self):
         """
@@ -1498,7 +1481,7 @@ class ConfigNode(object):
         """
         prefix = self.ui_complete_method_prefix
         try:
-            method = getattr(self, '%s%s' % (prefix, command))
+            method = getattr(self, f'{prefix}{command}')
         except AttributeError:
             return None
         else:
