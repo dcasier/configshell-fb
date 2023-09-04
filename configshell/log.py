@@ -47,11 +47,8 @@ class Log(object):
         """
         This class implements the Borg pattern.
         @param console_level: Console log level, defaults to 'info'
-        @type console_level: str
         @param logfile: Optional logfile.
-        @type logfile: str
         @param file_level: File log level, defaults to 'debug'.
-        @type file_level: str
         """
         self.__dict__ = self.__borg_state
         self.con = Console()
@@ -77,9 +74,7 @@ class Log(object):
         Just appends the message to the logfile if it exists, prefixing it with
         the current time and level.
         @param msg: The message to log
-        @type msg: str
         @param level: The debug level to prefix the message with.
-        @type level: str
         """
         date_fields = time.localtime()
         date = "%d-%02d-%02d %02d:%02d:%02d" \
@@ -98,9 +93,7 @@ class Log(object):
         """
         Do the actual logging.
         @param level: The log level of the message.
-        @type level: str
         @param msg: The message to log.
-        @type msg: str
         """
         if self.levels.index(self.prefs['loglevel_file']) \
                 >= self.levels.index(level):
@@ -123,7 +116,6 @@ class Log(object):
         """
         Logs a debug message.
         @param msg: The message to log.
-        @type msg: str
         """
         caller = inspect.stack()[1]
         msg = "%s:%d %s() %s" % (caller[1], caller[2], caller[3], msg)
@@ -133,7 +125,6 @@ class Log(object):
         """
         Logs an error message and dumps a full stack trace.
         @param msg: The message to log.
-        @type msg: str
         """
         trace = traceback.format_exc().rstrip()
         if msg:
@@ -144,7 +135,6 @@ class Log(object):
         """
         Logs a verbose message.
         @param msg: The message to log.
-        @type msg: str
         """
         self._log('verbose', msg)
 
@@ -152,7 +142,6 @@ class Log(object):
         """
         Logs an info message.
         @param msg: The message to log.
-        @type msg: str
         """
         self._log('info', msg)
 
@@ -160,7 +149,6 @@ class Log(object):
         """
         Logs a warning message.
         @param msg: The message to log.
-        @type msg: str
         """
         self._log('warning', msg)
 
@@ -168,7 +156,6 @@ class Log(object):
         """
         Logs an error message.
         @param msg: The message to log.
-        @type msg: str
         """
         self._log('error', msg)
 
@@ -176,6 +163,5 @@ class Log(object):
         """
         Logs a critical message.
         @param msg: The message to log.
-        @type msg: str
         """
         self._log('critical', msg)

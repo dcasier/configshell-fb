@@ -72,9 +72,7 @@ class Console(object):
         Sends an escape sequence to the console, and reads the reply terminated
         by reply_terminator. If reply_terminator is not specified, the reply
         will not be read.
-        @type sequence: str
         @param reply_terminator: The expected end-of-reply marker.
-        @type reply_terminator: str
         """
         attributes = tcgetattr(self._stdin)
         tty.setraw(self._stdin)
@@ -120,9 +118,7 @@ class Console(object):
         """
         Set the cursor x, y coordinates.
         @param xpos: The x coordinate of the cursor.
-        @type xpos: int
         @param ypos: The y coordinate of the cursor.
-        @type ypos: int
         """
         self.escape("%d;%dH" % (ypos, xpos))
 
@@ -130,7 +126,6 @@ class Console(object):
         """
         Raw console printing function.
         @param text: The text to print.
-        @type text: str
         """
         output.write(text)
         output.flush()
@@ -139,9 +134,7 @@ class Console(object):
         """
         Display a text with a default style.
         @param text: Text to display
-        @type text: str
         @param no_lf: Do not display a line feed.
-        @type no_lf: bool
         """
         text = self.render_text(text)
 
@@ -176,7 +169,6 @@ class Console(object):
         """
         Indents text by margin space.
         @param text: The text to be indented.
-        @type text: str
         """
         output = ''
         for line in text.split('\n'):
@@ -204,18 +196,13 @@ class Console(object):
         Renders some text with ANSI console colors and attributes.
         @param fgcolor: ANSI color to use for text:
             black, red, green, yellow, blue, magenta. cyan. white
-        @type fgcolor: str
         @param bgcolor: ANSI color to use for background:
             black, red, green, yellow, blue, magenta. cyan. white
-        @type bgcolor: str
         @param styles: List of ANSI styles to use:
             bold, underline, blink, reverse, concealed
-        @type styles: list of str
         @param open_end: Do not reset text style at the end ot the output.
-        @type open_end: bool
         @param todefault: Instead of resetting style at the end of the
         output, reset to default color. Only if not open_end.
-        @type todefault: bool
         """
         if self.prefs['color_mode'] and self._stdout.isatty():
             if fgcolor is None:
@@ -254,10 +241,8 @@ class Console(object):
 
         @param indent: If specified, then indent each line by this number
             of spaces.
-        @type indent: int
         @param startindex: If specified, then assume that the first line
             is already preceded by startindex characters.
-        @type startindex: int
         @param splitchars: A list of non-whitespace characters which can
             be used to split a line.  (E.g., use '/\\' to allow path names
             to be split over multiple lines.)

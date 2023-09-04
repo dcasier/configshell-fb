@@ -85,9 +85,7 @@ class ConfigNode(object):
         """
         @param parent: The parent ConfigNode of the new object. If None, then
         the ConfigNode will be a root node.
-        @type parent: ConfigNode or None
         @param shell: The shell to attach a root node to.
-        @type shell: ConfigShell
         """
         self._name = name
         self._children: set[ConfigNode] = set()
@@ -166,14 +164,11 @@ class ConfigNode(object):
         """
         UI parameter type helper for number parameter type.
         @param value: Value to check against the type.
-        @type value: anything
         @param enum: Has a meaning only if value is omitted. If set, returns
         a list of the possible values for the type, or [] if this is not
         possible. If not set, returns a text description of the type format.
-        @type enum: bool
         @param reverse: If set, translates an internal value to its UI
         string representation.
-        @type reverse: bool
         @return: c.f. parameter enum description.
         @rtype: str|list|None
         @raise ValueError: If the value does not check ok against the type.
@@ -206,14 +201,11 @@ class ConfigNode(object):
         """
         UI parameter type helper for string parameter type.
         @param value: Value to check against the type.
-        @type value: anything
         @param enum: Has a meaning only if value is omitted. If set, returns
         a list of the possible values for the type, or [] if this is not
         possible. If not set, returns a text description of the type format.
-        @type enum: bool
         @param reverse: If set, translates an internal value to its UI
         string representation.
-        @type reverse: bool
         @return: c.f. parameter enum description.
         @rtype: str|list|None
         @raise ValueError: If the value does not check ok against the type.
@@ -247,14 +239,11 @@ class ConfigNode(object):
         UI parameter type helper for boolean parameter type. Valid values are
         either 'true' or 'false'.
         @param value: Value to check against the type.
-        @type value: anything
         @param enum: Has a meaning only if value is omitted. If set, returns
         a list of the possible values for the type, or None if this is not
         possible. If not set, returns a text description of the type format.
-        @type enum: bool
         @param reverse: If set, translates an internal value to its UI
         string representation.
-        @type reverse: bool
         @return: c.f. parameter enum description.
         @rtype: str|list|None
         @raise ValueError: If the value does not check ok againts the type.
@@ -283,14 +272,11 @@ class ConfigNode(object):
         """
         UI parameter type helper for log level parameter type.
         @param value: Value to check against the type.
-        @type value: anything
         @param enum: Has a meaning only if value is omitted. If set, returns
         a list of the possible values for the type, or None if this is not
         possible. If not set, returns a text description of the type format.
-        @type enum: bool
         @param reverse: If set, translates an internal value to its UI
         string representation.
-        @type reverse: bool
         @return: c.f. parameter enum description.
         @rtype: str|list|None
         @raise ValueError: If the value does not check ok againts the type.
@@ -318,14 +304,11 @@ class ConfigNode(object):
         """
         UI parameter type helper for color parameter type.
         @param value: Value to check against the type.
-        @type value: anything
         @param enum: Has a meaning only if value is omitted. If set, returns
         a list of the possible values for the type, or None if this is not
         possible. If not set, returns a text description of the type format.
-        @type enum: bool
         @param reverse: If set, translates an internal value to its UI
         string representation.
-        @type reverse: bool
         @return: c.f. parameter enum description.
         @rtype: str|list|None
         @raise ValueError: If the value does not check ok againts the type.
@@ -355,14 +338,11 @@ class ConfigNode(object):
         """
         UI parameter type helper for default color parameter type.
         @param value: Value to check against the type.
-        @type value: anything
         @param enum: Has a meaning only if value is omitted. If set, returns
         a list of the possible values for the type, or None if this is not
         possible. If not set, returns a text description of the type format.
-        @type enum: bool
         @param reverse: If set, translates an internal value to its UI
         string representation.
-        @type reverse: bool
         @return: c.f. parameter enum description.
         @rtype: str|list|None
         @raise ValueError: If the value does not check ok againts the type.
@@ -407,9 +387,7 @@ class ConfigNode(object):
         overhead, and allows setting new parameters without error.
 
         @param parameter: The parameter to set.
-        @type parameter: str
         @param value: The value
-        @type value: arbitrary
         """
         self.shell.prefs[parameter] = value
 
@@ -425,7 +403,6 @@ class ConfigNode(object):
         not exist, as supported by Prefs().
 
         @param parameter: The parameter to get the value of.
-        @type parameter: str
         @return: The parameter's value
         @rtype: arbitrary
         """
@@ -439,11 +416,8 @@ class ConfigNode(object):
         will be raised.
 
         @param ui_value: The user provided parameter value.
-        @type ui_value: str
         @param type: The ui_type to be used
-        @type type: str
         @param default: The default value to return.
-        @type default: any
         @return: The evaluated parameter value.
         @rtype: depends on type
         @raise ExecutionError: If evaluation fails.
@@ -535,11 +509,8 @@ class ConfigNode(object):
         """
         Parameter auto-completion method for user command set.
         @param parameters: Parameters on the command line.
-        @type parameters: dict
         @param text: Current text of parameter being typed by the user.
-        @type text: str
         @param current_param: Name of parameter to complete.
-        @type current_param: str
         @return: Possible completions
         @rtype: list of str
         """
@@ -646,11 +617,8 @@ class ConfigNode(object):
         """
         Parameter auto-completion method for user command get.
         @param parameters: Parameters on the command line.
-        @type parameters: dict
         @param text: Current text of parameter being typed by the user.
-        @type text: str
         @param current_param: Name of parameter to complete.
-        @type current_param: str
         @return: Possible completions
         @rtype: list of str
         """
@@ -721,17 +689,13 @@ class ConfigNode(object):
         """
         Renders an ascii representation of a tree of ConfigNodes.
         @param root: The root node of the tree
-        @type root: ConfigNode
         @param margin: Format of the left margin to use for children.
         True results in a pipe, and False results in no pipe.
         Used for recursion only.
-        @type margin: list
         @param depth: The maximum depth of nodes to display, None means
         infinite.
-        @type depth: None or int
         @param do_list: Return two lists, one with each line text
         representation, the other with the corresponding paths.
-        @type do_list: bool
         @return: An ascii tree representation or (lines, paths).
         @rtype: str
         """
@@ -886,11 +850,8 @@ class ConfigNode(object):
         """
         Parameter auto-completion method for user command ls.
         @param parameters: Parameters on the command line.
-        @type parameters: dict
         @param text: Current text of parameter being typed by the user.
-        @type text: str
         @param current_param: Name of parameter to complete.
-        @type current_param: str
         @return: Possible completions
         @rtype: list of str
         """
@@ -1062,9 +1023,7 @@ class ConfigNode(object):
         and after allowing selection of one line using up, down and enter keys,
         returns its index.
         @param lines: The lines to display and select from.
-        @type lines: list of str
         @param start_pos: The index of the line to select initially.
-        @type start_pos: int
         @return: the index of the selected line.
         @rtype: int
         """
@@ -1103,11 +1062,8 @@ class ConfigNode(object):
         """
         Parameter auto-completion method for user command cd.
         @param parameters: Parameters on the command line.
-        @type parameters: dict
         @param text: Current text of parameter being typed by the user.
-        @type text: str
         @param current_param: Name of parameter to complete.
-        @type current_param: str
         @return: Possible completions
         @rtype: list of str
         """
@@ -1169,11 +1125,8 @@ class ConfigNode(object):
         """
         Parameter auto-completion method for user command help.
         @param parameters: Parameters on the command line.
-        @type parameters: dict
         @param text: Current text of parameter being typed by the user.
-        @type text: str
         @param current_param: Name of parameter to complete.
-        @type current_param: str
         @return: Possible completions
         @rtype: list of str
         """
@@ -1277,11 +1230,8 @@ class ConfigNode(object):
         """
         Parameter auto-completion method for user command bookmarks.
         @param parameters: Parameters on the command line.
-        @type parameters: dict
         @param text: Current text of parameter being typed by the user.
-        @type text: str
         @param current_param: Name of parameter to complete.
-        @type current_param: str
         @return: Possible completions
         @rtype: list of str
         """
@@ -1391,11 +1341,8 @@ class ConfigNode(object):
         by ConfigNode.ui_command_method_prefix and COMMAND is the commands's
         name as seen by the user.
         @param command: Name of the command.
-        @type command: str
         @param pparams: The positional parameters to use.
-        @type pparams: list
         @param kparams: The keyword=value parameters to use.
-        @type kparams: dict
         @return: The support method's return value.
         See ConfigShell._execute_command() for expected return values and how
         they are interpreted by ConfigShell.
@@ -1423,11 +1370,8 @@ class ConfigNode(object):
         Checks that positional and keyword parameters match a method
         definition, or raise an ExecutionError.
         @param method: The method to check call signature against.
-        @type method: method
         @param pparams: The positional parameters.
-        @type pparams: list
         @param kparams: The keyword parameters.
-        @type kparams: dict
         @raise ExecutionError: When the check fails.
         """
         spec = inspect.getfullargspec(method)
@@ -1516,7 +1460,6 @@ class ConfigNode(object):
     def get_group_getter(self, group: str):
         """
         @param group: A valid configuration group
-        @type group: str
         @return: The getter method for the configuration group.
         @rtype: method object
         """
@@ -1526,7 +1469,6 @@ class ConfigNode(object):
     def get_group_setter(self, group: str):
         """
         @param group: A valid configuration group
-        @type group: str
         @return: The setter method for the configuration group.
         @rtype: method object
         """
@@ -1536,7 +1478,6 @@ class ConfigNode(object):
     def get_command_method(self, command: str):
         """
         @param command: The command to get the method for.
-        @type command: str
         @return: The user command support method.
         @rtype: method
         @raise ValueError: If the command is not found.
@@ -1554,7 +1495,6 @@ class ConfigNode(object):
         @return: A user command's completion method or None.
         @rtype: method or None
         @param command: The command to get the completion method for.
-        @type command: str
         """
         prefix = self.ui_complete_method_prefix
         try:
@@ -1569,7 +1509,6 @@ class ConfigNode(object):
         @return: An description string for a user command.
         @rtype: str
         @param command: The command to describe.
-        @type command: str
         """
         doc = self.get_command_method(command).__doc__
         if not doc:
@@ -1585,7 +1524,6 @@ class ConfigNode(object):
             - default_values is a string with the default parameters values.
         @rtype: (str, [str...], str)
         @param command: The command to document.
-        @type command: str
         """
         method = self.get_command_method(command)
         spec = inspect.getfullargspec(method)
@@ -1635,7 +1573,6 @@ class ConfigNode(object):
         """
         Get a command's signature.
         @param command: The command to get the signature of.
-        @type command: str
         @return: (parameters, free_pparams, free_kparams) where parameters is a
         list of all the command's parameters and free_pparams and free_kparams
         booleans set to True is the command accepts an arbitrary number of,
@@ -1674,13 +1611,9 @@ class ConfigNode(object):
         """
         Helper to define configuration group parameters.
         @param group: The configuration group to add the parameter to.
-        @type group: str
         @param param: The new parameter name.
-        @type param: str
         @param description: Optional description string.
-        @type description: str
         @param writable: Whether or not this would be a rw or ro parameter.
-        @type writable: bool
         """
         if group not in self._configuration_groups:
             self._configuration_groups[group] = {}
@@ -1708,9 +1641,7 @@ class ConfigNode(object):
         Lists the parameters from group matching the optional param, writable
         and type supplied (if none is supplied, returns all group parameters.
         @param group: The group to list parameters of.
-        @type group: str
         @param writable: Optional writable flag filter.
-        @type writable: bool
         """
         if group not in self.list_config_groups():
             return []
@@ -1728,9 +1659,7 @@ class ConfigNode(object):
     def get_group_param(self, group: str, param: str):
         """
         @param group: The configuration group to retreive the parameter from.
-        @type group: str
         @param param: The parameter name.
-        @type param: str
         @return: A dictionnary for the requested group parameter, with
         name, writable, description, group and type fields.
         @rtype: dict
@@ -1775,7 +1704,6 @@ class ConfigNode(object):
     def get_child(self, name: str):
         """
         @param name: The child's name.
-        @type name: str
         @return: Our child named by name.
         @rtype: ConfigNode
         @raise ValueError: If there is no child named by name.
@@ -1791,7 +1719,6 @@ class ConfigNode(object):
         """
         Removes a child from our children's list.
         @param child: The child to remove.
-        @type child: ConfigNode
         """
         self._children.remove(child)
 
@@ -1799,7 +1726,6 @@ class ConfigNode(object):
         """
         Looks up a node by path in the nodes tree.
         @param path: The node's path.
-        @type path: str
         @return: The node that has the given path.
         @rtype: ConfigNode
         @raise ValueError: If there is no node with that path.

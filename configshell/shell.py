@@ -116,7 +116,6 @@ class ConfigShell(object):
         """
         Creates a new ConfigShell.
         @param preferences_dir: Directory to load/save preferences from/to
-        @type preferences_dir: str
         """
         self._current_node = None
         self._root_node = None
@@ -267,11 +266,8 @@ class ConfigShell(object):
         Completes a partial command token, which could also be the beginning
         of a path.
         @param path: Path of the target ConfigNode.
-        @type path: str
         @param command: The command (if any) found by the parser.
-        @type command: str
         @param text: Current text being typed by the user.
-        @type text: str
         @return: Possible completions for the token.
         @rtype: list of str
         """
@@ -337,7 +333,6 @@ class ConfigShell(object):
         """
         Completes a partial path token.
         @param text: Current text being typed by the user.
-        @type text: str
         @return: Possible completions for the token.
         @rtype: list of str
         """
@@ -392,15 +387,10 @@ class ConfigShell(object):
         part of a kparam token, as before the '=' sign is on the line, the
         parser cannot know better.
         @param path: Path of the target ConfigNode.
-        @type path: str
         @param command: The command (if any) found by the parser.
-        @type command: str
         @param pparams: Positional parameters from commandline.
-        @type pparams: list of str
         @param kparams: Keyword parameters from commandline.
-        @type kparams: dict of str:str
         @param text: Current text being typed by the user.
-        @type text: str
         @return: Possible completions for the token.
         @rtype: list of str
         """
@@ -534,15 +524,10 @@ class ConfigShell(object):
         """
         Completes a keyword=value parameter token.
         @param path: Path of the target ConfigNode.
-        @type path: str
         @param command: The command (if any) found by the parser.
-        @type command: str
         @param pparams: Positional parameters from commandline.
-        @type pparams: list of str
         @param kparams: Keyword parameters from commandline.
-        @type kparams: dict of str:str
         @param text: Current text being typed by the user.
-        @type text: str
         @return: Possible completions for the token.
         @rtype: list of str
         """
@@ -585,7 +570,6 @@ class ConfigShell(object):
         Then implements the state system needed by readline to return those
         possible completions to readline.
         @param text: The text to complete.
-        @type text: str
         @returns: The next possible completion for text.
         @rtype: str
         """
@@ -647,17 +631,11 @@ class ConfigShell(object):
         command line, there is no way to distinguish a positional parameter
         from the begining of a keyword=value parameter.
         @param path: Path of the target ConfigNode.
-        @type path: str
         @param command: The command (if any) found by the parser.
-        @type command: str
         @param pparams: Positional parameters from commandline.
-        @type pparams: list of str
         @param kparams: Keyword parameters from commandline.
-        @type kparams: dict of str:str
         @param text: Current text being typed by the user.
-        @type text: str
         @param current_token: Name of token to complete.
-        @type current_token: str
         @return: Possible completions for the token.
         @rtype: list of str
         """
@@ -753,7 +731,6 @@ class ConfigShell(object):
         the actual pyparsing parser that pre-chews the result trees to
         cleanly extract the tokens we care for (parameters, path, command).
         @param line: The command line to parse.
-        @type line: str
         @return: (result_trees, path, command, pparams, kparams),
         pparams being positional parameters and kparams the keyword=value.
         @rtype: (pyparsing.ParseResults, str, str, list, dict)
@@ -787,13 +764,9 @@ class ConfigShell(object):
             - None will do nothing.
             - A ConfigNode object will trigger a current_node change.
         @param path: Path of the target node.
-        @type path: str
         @param command: The command to call.
-        @type command: str
         @param pparams: The positional parameters to use.
-        @type pparams: list
         @param kparams: The keyword=value parameters to use.
-        @type kparams: dict
         """
         if path.endswith('*'):
             path = path.rstrip('*')
@@ -846,7 +819,6 @@ class ConfigShell(object):
         [PATH] COMMAND [POSITIONAL_PARAMETER]+ [PARAMETER=VALUE]+
 
         @param cmdline: The command line to run
-        @type cmdline: str
         """
         if cmdline:
             self.log.verbose("Running command line '%s'." % cmdline)
@@ -858,9 +830,7 @@ class ConfigShell(object):
         Runs the script located at script_path.
         Script runs always start from the root context.
         @param script_path: File path of the script to run
-        @type script_path: str
         @param exit_on_error: If True, stops the run if an error occurs
-        @type exit_on_error: bool
         """
         try:
             script_fd = open(script_path, 'r')
@@ -875,9 +845,7 @@ class ConfigShell(object):
         Reads commands to be run from a file descriptor, stdin by default.
         The run always starts from the root context.
         @param file_descriptor: The file descriptor to read commands from
-        @type file_descriptor: file object
         @param exit_on_error: If True, stops the run if an error occurs
-        @type exit_on_error: bool
         """
         self._current_node = self._root_node
         for cmdline in file_descriptor:
@@ -918,7 +886,6 @@ class ConfigShell(object):
     def attach_root_node(self, root_node: ConfigNode):
         """
         @param root_node: The root ConfigNode object
-        @type root_node: ConfigNode
         """
         self._current_node = root_node
         self._root_node = root_node

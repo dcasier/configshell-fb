@@ -39,7 +39,6 @@ class Prefs(object):
         """
         Instanciates the ConfigShell preferences object.
         @param filename: File to store the preferencces to.
-        @type filename: str
         """
         self.__dict__ = self.__borg_state
         if filename is not None:
@@ -51,7 +50,6 @@ class Prefs(object):
         One specific behavior, though, is that if the key does not exists,
         we will return None instead of raising an exception.
         @param key: The preferences dictionnary key to get.
-        @type key: any valid dict key
         @return: The key value
         @rtype: n/a
         """
@@ -64,7 +62,6 @@ class Prefs(object):
         """
         Proxies dict-like references to prefs.
         @param key: The preferences dictionnary key to set.
-        @type key: any valid dict key
         """
         self._prefs[key] = value
         if self.autosave:
@@ -74,7 +71,6 @@ class Prefs(object):
         """
         Do the preferences contain key ?
         @param key: The preferences dictionnary key to check.
-        @type key: any valid dict key
         """
         if key in self._prefs:
             return True
@@ -85,7 +81,6 @@ class Prefs(object):
         """
         Deletes a preference key.
         @param key: The preference to delete.
-        @type key: any valid dict key
         """
         del self._prefs[key]
         if self.autosave:
@@ -125,7 +120,6 @@ class Prefs(object):
         Saves the preferences to disk. If filename is not specified,
         use the default one if it is set, else do nothing.
         @param filename: Optional alternate file to use.
-        @type filename: str
         """
         if filename is None:
             filename = self.filename
