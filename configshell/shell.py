@@ -25,7 +25,6 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from typing import TextIO
 
-import six
 from pyparsing import (alphanums, locatedExpr,
                        OneOrMore, Optional, ParseResults, Regex,
                        Suppress, Word)
@@ -183,7 +182,7 @@ class ConfigShell(object):
             self.log.warning("Could not load preferences file %s."
                              % self._prefs_file)
 
-        for pref, value in six.iteritems(self.default_prefs):
+        for pref, value in self.default_prefs.items():
             if pref not in self.prefs:
                 self.prefs[pref] = value
 
@@ -249,7 +248,7 @@ class ConfigShell(object):
             else:
                 nr_cols = 1
 
-            for i in six.moves.range(0, len(matches), nr_cols):
+            for i in range(0, len(matches), nr_cols):
                 self.con.raw_write(''.join(matches[i:i + nr_cols]))
                 self.con.raw_write('\n')
 
@@ -411,7 +410,7 @@ class ConfigShell(object):
         for index in range(len(pparams)):
             if index < len(cmd_params):
                 current_parameters[cmd_params[index]] = pparams[index]
-        for key, value in six.iteritems(kparams):
+        for key, value in kparams.items():
             current_parameters[key] = value
         self._completion_help_topic = command
         completion_method = target.get_completion_method(command)
@@ -559,7 +558,7 @@ class ConfigShell(object):
         current_parameters = {}
         for index in range(len(pparams)):
             current_parameters[cmd_params[index]] = pparams[index]
-        for key, value in six.iteritems(kparams):
+        for key, value in kparams.items():
             current_parameters[key] = value
         completion_method = target.get_completion_method(command)
         if completion_method:
@@ -730,7 +729,7 @@ class ConfigShell(object):
             try:
                 readline.parse_and_bind("tab: complete")
                 readline.set_completer(self._complete)
-                cmdline = six.moves.input(self._get_prompt()).strip()
+                cmdline = input(self._get_prompt()).strip()
             except EOFError:
                 self.con.raw_write('exit\n')
                 cmdline = "exit"

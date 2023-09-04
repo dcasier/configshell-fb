@@ -21,8 +21,6 @@ import inspect
 import re
 from typing import TYPE_CHECKING
 
-import six
-
 if TYPE_CHECKING:
     from configshell_fb import ConfigShell
 
@@ -511,7 +509,7 @@ class ConfigNode(object):
         elif group not in self.list_config_groups():
             raise ExecutionError("Unknown configuration group: %s" % group)
 
-        for param, value in six.iteritems(parameter):
+        for param, value in parameter.items():
             if param not in self.list_group_params(group):
                 raise ExecutionError("Unknown parameter %s in group '%s'."
                                      % (param, group))
@@ -1266,8 +1264,7 @@ class ConfigNode(object):
             if not self.shell.prefs['bookmarks']:
                 bookmarks += "No bookmarks yet.\n"
             else:
-                for (bookmark, path) \
-                        in six.iteritems(self.shell.prefs['bookmarks']):
+                for (bookmark, path) in self.shell.prefs['bookmarks'].items():
                     if len(bookmark) == 1:
                         bookmark += '\0'
                     underline = ''.ljust(len(bookmark), '-')
@@ -1719,7 +1716,7 @@ class ConfigNode(object):
             return []
         else:
             params = []
-            for p_name, p_def in six.iteritems(self._configuration_groups[group]):
+            for p_name, p_def in self._configuration_groups[group].items():
                 (p_type, p_description, p_writable) = p_def
                 if writable is not None and p_writable != writable:
                     continue
