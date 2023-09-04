@@ -18,6 +18,7 @@ under the License.
 
 import os
 import re
+
 from setuptools import setup
 
 # Get version without importing.
@@ -33,22 +34,21 @@ with open(init_file_path) as f:
         raise Exception("Couldn't find version in setup.py")
 
 setup(
-    name = 'configshell-fb',
-    version = '1.1.30',
-    description = 'A framework to implement simple but nice CLIs.',
-    license = 'Apache 2.0',
-    maintainer = 'Andy Grover',
-    maintainer_email = 'agrover@redhat.com',
-    url = 'http://github.com/open-iscsi/configshell-fb',
-    packages = ['configshell', 'configshell_fb'],
-    install_requires = [
+    name='configshell-fb',
+    version='1.1.31',
+    description='A framework to implement simple but nice CLIs.',
+    license='Apache 2.0',
+    maintainer='Andy Grover',
+    maintainer_email='agrover@redhat.com',
+    url='http://github.com/open-iscsi/configshell-fb',
+    packages=['configshell', 'configshell_fb'],
+    install_requires=[
         'pyparsing >=2.0.2',
-        'six',
         'urwid',
     ],
-    classifiers = [
+    classifiers=[
         "Programming Language :: Python",
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: Apache Software License",
     ],
-    )
+)

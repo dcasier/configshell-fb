@@ -793,7 +793,7 @@ class ConfigShell(object):
             path, command, pparams, kparams = self._parse_cmdline(cmdline)[1:]
             await self._execute_command(path, command, pparams, kparams)
 
-    def run_script(self, script_path: str, exit_on_error: bool = True):
+    async def run_script_async(self, script_path: str, exit_on_error: bool = True):
         """
         Runs the script located at script_path.
         Script runs always start from the root context.
@@ -802,13 +802,13 @@ class ConfigShell(object):
         """
         try:
             script_fd = open(script_path, 'r')
-            self.run_stdin(script_fd, exit_on_error)
+            await self.run_stdin_async(script_fd, exit_on_error)
         except IOError as msg:
             raise IOError(msg)
         finally:
             script_fd.close()
 
-    def run_stdin(self, file_descriptor: TextIO = sys.stdin, exit_on_error: bool = True):
+    async def run_stdin_async(self, file_descriptor: TextIO = sys.stdin, exit_on_error: bool = True):
         """
         Reads commands to be run from a file descriptor, stdin by default.
         The run always starts from the root context.
@@ -818,9 +818,9 @@ class ConfigShell(object):
         self._current_node = self._root_node
         for cmdline in file_descriptor:
             try:
-                self.run_cmdline(cmdline.strip())
+                await self.run_cmdline_async(cmdline.strip())
             except Exception as msg:
-                self.log.error(msg)
+                self.log.exception(msg)
                 if exit_on_error is True:
                     raise ExecutionError("Aborting run on error.")
 
