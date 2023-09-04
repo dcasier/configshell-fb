@@ -22,7 +22,7 @@ import os
 import signal
 import sys
 from asyncio import iscoroutine
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Coroutine, Any
 
 if TYPE_CHECKING:
     from typing import TextIO
@@ -765,8 +765,9 @@ class ConfigShell(object):
         for target in targets:
             if iterall:
                 self.con.display(f'[{target.path}]')
-            result = target.execute_command(command, pparams, kparams)
+            result: Coroutine | Any = target.execute_command(command, pparams, kparams)
             if iscoroutine(result):
+                result: Coroutine
                 result = await result
         self.log.debug(f'Command execution returned {result}')
         if isinstance(result, ConfigNode):

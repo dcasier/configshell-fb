@@ -1319,14 +1319,12 @@ class ConfigNode(object):
         if kparams is None:
             kparams = {}
 
-        self.shell.log.debug("Executing command %s " % command
-                             + "with pparams %s " % pparams
-                             + "and kparams %s." % kparams)
+        self.shell.log.debug(f'Executing command {command} with pparams {pparams} and kparams {kparams}')
 
         if command in self.list_commands():
             method = self.get_command_method(command)
         else:
-            raise ExecutionError("Command not found %s" % command)
+            raise ExecutionError(f'Command not found {command}')
 
         self.assert_params(method, pparams, kparams)
         return method(*pparams, **kparams)
@@ -1440,11 +1438,10 @@ class ConfigNode(object):
         """
         prefix = self.ui_command_method_prefix
         if command in self.list_commands():
-            return getattr(self, '%s%s' % (prefix, command))
+            return getattr(self, f'{prefix}{command}')
         else:
-            self.shell.log.debug('No command named %s in %s (%s)'
-                                 % (command, self.name, self.path))
-            raise ValueError('No command named "%s".' % command)
+            self.shell.log.debug(f'No command named {command} in {self.name} ({self.path})')
+            raise ValueError(f'No command named "{command}".')
 
     def get_completion_method(self, command: str):
         """
@@ -1634,7 +1631,7 @@ class ConfigNode(object):
         @return: Wether or not we are a root node.
         @rtype: bool
         """
-        if self._parent is None:
+        if self.parent is None:
             return True
         else:
             return False
@@ -1676,8 +1673,8 @@ class ConfigNode(object):
             if name == self._path_current:
                 return self
             elif name == self._path_previous:
-                if self._parent is not None:
-                    return self._parent
+                if self.parent is not None:
+                    return self.parent
                 else:
                     return self
             else:
@@ -1693,13 +1690,13 @@ class ConfigNode(object):
             if bookmark in self.shell.prefs['bookmarks']:
                 path = self.shell.prefs['bookmarks'][bookmark]
             else:
-                raise ValueError("No such bookmark %s" % bookmark)
+                raise ValueError(f'No such bookmark {bookmark}')
 
         # More cleanup
         path = re.sub('%s+' % self._path_separator, self._path_separator, path)
         if len(path) > 1:
             path = path.rstrip(self._path_separator)
-        self.shell.log.debug("Looking for path '%s'" % path)
+        self.shell.log.debug(f"Looking for path '{path}'")
 
         # Absolute path - make relative and pass on to root node
         if path.startswith(self._path_separator):
