@@ -16,9 +16,13 @@ under the License.
 '''
 
 import os
-import six
+# A fix for frozen packages
+import signal
 import sys
-from pyparsing import (alphanums, Empty, Group, locatedExpr,
+from asyncio import iscoroutine
+
+import six
+from pyparsing import (alphanums, locatedExpr,
                        OneOrMore, Optional, ParseResults, Regex,
                        Suppress, Word)
 
@@ -27,8 +31,7 @@ from . import log
 from . import prefs
 from .node import ConfigNode, ExecutionError
 
-# A fix for frozen packages
-import signal
+
 def handle_sigint(signum, frame):
     '''
     Raise KeyboardInterrupt when we get a SIGINT.
@@ -38,6 +41,7 @@ def handle_sigint(signum, frame):
     '''
     raise KeyboardInterrupt
 
+
 try:
     signal.signal(signal.SIGINT, handle_sigint)
 except Exception:
@@ -46,9 +50,10 @@ except Exception:
 
 if sys.stdout.isatty():
     import readline
-    tty=True
+
+    tty = True
 else:
-    tty=False
+    tty = False
 
     # remember the original setting
     oldTerm = os.environ.get('TERM')
@@ -60,6 +65,7 @@ else:
     if oldTerm != None:
         os.environ['TERM'] = oldTerm
     del oldTerm
+
 
 class ConfigShell(object):
     '''
@@ -94,7 +100,7 @@ class ConfigShell(object):
                      'tree_status_mode': True,
                      'tree_round_nodes': True,
                      'tree_show_root': True
-                    }
+                     }
 
     _completion_help_topic = ''
     _current_parameter = ''
@@ -122,7 +128,7 @@ class ConfigShell(object):
         parameters = OneOrMore(parameter)
         bookmark = Regex('@([A-Za-z0-9:_.]|-)+')
         pathstd = Regex('([A-Za-z0-9:_.\[\]]|-)*' + '/' + '([A-Za-z0-9:_.\[\]/]|-)*') \
-                | '..' | '.'
+                  | '..' | '.'
         path = locatedExpr(bookmark | pathstd | '*')('path')
         parser = Optional(path) + Optional(command) + Optional(parameters)
         self._parser = parser
@@ -240,7 +246,7 @@ class ConfigShell(object):
                 nr_cols = 1
 
             for i in six.moves.range(0, len(matches), nr_cols):
-                self.con.raw_write(''.join(matches[i:i+nr_cols]))
+                self.con.raw_write(''.join(matches[i:i + nr_cols]))
                 self.con.raw_write('\n')
 
         # Display the prompt and the command line
@@ -289,28 +295,28 @@ class ConfigShell(object):
             if path_completions:
                 if completions:
                     self._current_token = \
-                            self.con.render_text(
-                                'path', self.prefs['color_path']) \
-                            + '|' \
-                            + self.con.render_text(
-                                'command', self.prefs['color_command'])
+                        self.con.render_text(
+                            'path', self.prefs['color_path']) \
+                        + '|' \
+                        + self.con.render_text(
+                            'command', self.prefs['color_command'])
                 else:
                     self._current_token = \
-                            self.con.render_text(
-                                'path', self.prefs['color_path'])
+                        self.con.render_text(
+                            'path', self.prefs['color_path'])
             else:
                 self._current_token = \
-                        self.con.render_text(
-                            'command', self.prefs['color_command'])
+                    self.con.render_text(
+                        'command', self.prefs['color_command'])
             if len(path_completions) == 1 and \
-               not path_completions[0][-1] in [' ', '*'] and \
-               not self._current_node.get_node(path_completions[0]).children:
+                    not path_completions[0][-1] in [' ', '*'] and \
+                    not self._current_node.get_node(path_completions[0]).children:
                 path_completions[0] = path_completions[0] + ' '
             completions.extend(path_completions)
         else:
             self._current_token = \
-                    self.con.render_text(
-                        'command', self.prefs['color_command'])
+                self.con.render_text(
+                    'command', self.prefs['color_command'])
 
         # Even a bookmark
         bookmarks = ['@' + bookmark for bookmark in self.prefs['bookmarks']
@@ -318,7 +324,6 @@ class ConfigShell(object):
         self.log.debug("Found bookmarks %s." % str(bookmarks))
         if bookmarks:
             completions.extend(bookmarks)
-
 
         # We are done
         return completions
@@ -372,8 +377,8 @@ class ConfigShell(object):
                     completions[0] = completions[0].rstrip('/') + ' '
 
         self._current_token = \
-                self.con.render_text(
-                    'path', self.prefs['color_path'])
+            self.con.render_text(
+                'path', self.prefs['color_path'])
         return completions
 
     def _complete_token_pparam(self, text, path, command, pparams, kparams):
@@ -397,7 +402,7 @@ class ConfigShell(object):
         completions = []
         target = self._current_node.get_node(path)
         cmd_params, free_pparams, free_kparams = \
-                target.get_command_signature(command)
+            target.get_command_signature(command)
         current_parameters = {}
         for index in range(len(pparams)):
             if index < len(cmd_params):
@@ -420,7 +425,7 @@ class ConfigShell(object):
                         "No more possible pparams (because of kparams).")
                     break
             elif (text.strip() == '' and len(pparams) == len(cmd_params)) \
-                  or (len(pparams) > len(cmd_params)):
+                    or (len(pparams) > len(cmd_params)):
                 pparam_ok = False
                 self.log.debug("No more possible pparams.")
                 break
@@ -449,9 +454,9 @@ class ConfigShell(object):
         else:
             offset = 0
         keyword_completions = [param + '=' \
-                       for param in cmd_params[len(pparams)-offset:] \
-                       if param not in kparams \
-                       if param.startswith(text)]
+                               for param in cmd_params[len(pparams) - offset:] \
+                               if param not in kparams \
+                               if param.startswith(text)]
 
         self.log.debug("Possible pparam values are %s."
                        % str(completions))
@@ -461,22 +466,22 @@ class ConfigShell(object):
         if keyword_completions:
             if self._current_parameter:
                 self._current_token = \
-                        self.con.render_text(
-                            self._current_parameter, \
-                            self.prefs['color_parameter']) \
-                        + '|'  \
-                        + self.con.render_text(
-                            'keyword=', self.prefs['color_keyword'])
+                    self.con.render_text(
+                        self._current_parameter, \
+                        self.prefs['color_parameter']) \
+                    + '|' \
+                    + self.con.render_text(
+                        'keyword=', self.prefs['color_keyword'])
             else:
                 self._current_token = \
-                        self.con.render_text(
-                            'keyword=', self.prefs['color_keyword'])
+                    self.con.render_text(
+                        'keyword=', self.prefs['color_keyword'])
         else:
             if self._current_parameter:
                 self._current_token = \
-                        self.con.render_text(
-                            self._current_parameter,
-                            self.prefs['color_parameter'])
+                    self.con.render_text(
+                        self._current_parameter,
+                        self.prefs['color_parameter'])
             else:
                 self._current_token = ''
 
@@ -498,9 +503,9 @@ class ConfigShell(object):
 
                 if do_free_pparams:
                     self._current_token = \
-                            self.con.render_text(
-                                free_pparams, self.prefs['color_parameter']) \
-                            + '|' + self._current_token
+                        self.con.render_text(
+                            free_pparams, self.prefs['color_parameter']) \
+                        + '|' + self._current_token
                     self._current_token = self._current_token.rstrip('|')
                     if not self._current_parameter:
                         self._current_parameter = 'free_parameter'
@@ -508,9 +513,9 @@ class ConfigShell(object):
                 if do_free_kparams:
                     if not 'keyword=' in self._current_token:
                         self._current_token = \
-                                self.con.render_text(
-                                    'keyword=', self.prefs['color_keyword']) \
-                                + '|' + self._current_token
+                            self.con.render_text(
+                                'keyword=', self.prefs['color_keyword']) \
+                            + '|' + self._current_token
                         self._current_token = self._current_token.rstrip('|')
                     if not self._current_parameter:
                         self._current_parameter = 'free_parameter'
@@ -560,8 +565,8 @@ class ConfigShell(object):
                 completions = []
 
         self._current_token = \
-                self.con.render_text(
-                    self._current_parameter, self.prefs['color_parameter'])
+            self.con.render_text(
+                self._current_parameter, self.prefs['color_parameter'])
 
         self.log.debug("Found completions %s." % str(completions))
 
@@ -586,7 +591,7 @@ class ConfigShell(object):
             self._current_parameter = ''
 
             (parse_results, path, command, pparams, kparams) = \
-                    self._parse_cmdline(cmdline)
+                self._parse_cmdline(cmdline)
 
             beg = readline.get_begidx()
             end = readline.get_endidx()
@@ -613,9 +618,9 @@ class ConfigShell(object):
                 current_token = 'kparam'
 
             self._current_completions = \
-                    self._dispatch_completion(path, command,
-                                              pparams, kparams,
-                                              text, current_token)
+                self._dispatch_completion(path, command,
+                                          pparams, kparams,
+                                          text, current_token)
 
             self.log.debug("Returning completions %s to readline."
                            % str(self._current_completions))
@@ -673,19 +678,18 @@ class ConfigShell(object):
         else:
             cpl_path = path
 
-
         if current_token == 'command':
             completions = self._complete_token_command(text, cpl_path, command)
         elif current_token == 'path':
             completions = self._complete_token_path(text)
         elif current_token == 'pparam':
             completions = \
-                    self._complete_token_pparam(text, cpl_path, command,
-                                                pparams, kparams)
+                self._complete_token_pparam(text, cpl_path, command,
+                                            pparams, kparams)
         elif current_token == 'kparam':
             completions = \
-                    self._complete_token_kparam(text, cpl_path, command,
-                                                pparams, kparams)
+                self._complete_token_kparam(text, cpl_path, command,
+                                            pparams, kparams)
         else:
             self.log.debug("Cannot complete unknown token %s."
                            % current_token)
@@ -702,7 +706,7 @@ class ConfigShell(object):
         if prompt_length and prompt_length < len(prompt_path):
             half = (prompt_length - 3) // 2
             prompt_path = "%s...%s" \
-                    % (prompt_path[:half], prompt_path[-half:])
+                          % (prompt_path[:half], prompt_path[-half:])
 
         if 'prompt_msg' in dir(self._current_node):
             return "%s%s> " % (self._current_node.prompt_msg(),
@@ -710,7 +714,7 @@ class ConfigShell(object):
         else:
             return "%s> " % prompt_path
 
-    def _cli_loop(self):
+    async def _cli_loop_async(self):
         '''
         Starts the configuration shell interactive loop, that:
             - Goes to the last current path
@@ -726,7 +730,7 @@ class ConfigShell(object):
             except EOFError:
                 self.con.raw_write('exit\n')
                 cmdline = "exit"
-            self.run_cmdline(cmdline)
+            await self.run_cmdline_async(cmdline)
             if self._save_history:
                 try:
                     readline.write_history_file(self._cmd_history)
@@ -770,7 +774,7 @@ class ConfigShell(object):
                        + "kparams=%s" % str(kparams))
         return (parse_results, path, command, pparams, kparams)
 
-    def _execute_command(self, path, command, pparams, kparams):
+    async def _execute_command(self, path, command, pparams, kparams):
         '''
         Calls the target node to execute a command.
         Behavior depends on the target node command's result:
@@ -816,6 +820,8 @@ class ConfigShell(object):
             if iterall:
                 self.con.display("[%s]" % target.path)
             result = target.execute_command(command, pparams, kparams)
+            if iscoroutine(result):
+                result = await result
         self.log.debug("Command execution returned %r" % result)
         if isinstance(result, ConfigNode):
             self._current_node = result
@@ -826,7 +832,7 @@ class ConfigShell(object):
 
     # Public methods
 
-    def run_cmdline(self, cmdline):
+    async def run_cmdline_async(self, cmdline):
         '''
         Runs the specified command. Global commands are checked first,
         then local commands from the current node.
@@ -840,7 +846,7 @@ class ConfigShell(object):
         if cmdline:
             self.log.verbose("Running command line '%s'." % cmdline)
             path, command, pparams, kparams = self._parse_cmdline(cmdline)[1:]
-            self._execute_command(path, command, pparams, kparams)
+            await self._execute_command(path, command, pparams, kparams)
 
     def run_script(self, script_path, exit_on_error=True):
         '''
@@ -879,7 +885,7 @@ class ConfigShell(object):
 
                 self.log.exception("Keep running after an error.")
 
-    def run_interactive(self):
+    async def run_interactive_async(self):
         '''
         Starts interactive CLI mode.
         '''
@@ -897,7 +903,7 @@ class ConfigShell(object):
         while True:
             try:
                 old_completer = readline.get_completer()
-                self._cli_loop()
+                await self._cli_loop_async()
                 break
             except KeyboardInterrupt:
                 self.con.raw_write('\n')

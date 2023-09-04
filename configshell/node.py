@@ -17,10 +17,13 @@ under the License.
 
 import inspect
 import re
+
 import six
+
 
 class ExecutionError(Exception):
     pass
+
 
 class ConfigNode(object):
     '''
@@ -381,7 +384,6 @@ class ConfigNode(object):
             raise ValueError("Syntax error, '%s' is not %s"
                              % (value, syntax))
 
-
     # User interface get/set methods
 
     def ui_setgroup_global(self, parameter, value):
@@ -496,7 +498,7 @@ class ConfigNode(object):
                 p_name = "%s=%s" % (p_def['name'], p_def['type'])
                 underline2 = ''.ljust(len(p_name), '-')
                 parameters += '%s\n%s\n%s\n\n' \
-                        % (p_name, underline2, p_def['description'])
+                              % (p_name, underline2, p_def['description'])
             self.shell.con.epy_write('''%s\n%s\n%s\n'''
                                      % (section, underline1, parameters))
 
@@ -610,7 +612,7 @@ class ConfigNode(object):
                     param += " [ro]"
                 underline2 = ''.ljust(len(param), '-')
                 parameters += '%s\n%s\n%s\n\n' \
-                        % (param, underline2, p_def['description'])
+                              % (param, underline2, p_def['description'])
 
             self.shell.con.epy_write('''%s\n%s\n%s\n'''
                                      % (section, underline1, parameters))
@@ -672,7 +674,7 @@ class ConfigNode(object):
         self.shell.log.debug("Returning completions %s." % str(completions))
         return completions
 
-    def ui_command_ls(self, path=None, depth=None):
+    async def ui_command_ls(self, path=None, depth=None):
         '''
         Display either the nodes tree relative to path or to the current node.
 
@@ -707,10 +709,10 @@ class ConfigNode(object):
 
         if depth == 0:
             depth = None
-        tree = self._render_tree(target, depth=depth)
+        tree = await self._render_tree(target, depth=depth)
         self.shell.con.display(tree)
 
-    def _render_tree(self, root, margin=None, depth=None, do_list=False):
+    async def _render_tree(self, root, margin=None, depth=None, do_list=False):
         '''
         Renders an ascii representation of a tree of ConfigNodes.
         @param root: The root node of the tree
@@ -762,7 +764,10 @@ class ConfigNode(object):
             name = self.shell.con.render_text(root.name, color, styles=styles)
         name_len = len(root.name)
 
-        (description, is_healthy) = root.summary()
+        summary = root.summary()
+        if inspect.iscoroutine(summary):
+            summary = await summary
+        (description, is_healthy) = summary
         if not description:
             if is_healthy is True:
                 description = "OK"
@@ -788,7 +793,7 @@ class ConfigNode(object):
                 summary += description
             else:
                 summary += self.shell.con.render_text(description, 'red',
-                                                styles=['bold'])
+                                                      styles=['bold'])
         else:
             summary += description
 
@@ -838,27 +843,27 @@ class ConfigNode(object):
         paths.append(root.path)
 
         if root_call \
-           and not self.shell.prefs['tree_show_root'] \
-           and not do_list:
+                and not self.shell.prefs['tree_show_root'] \
+                and not do_list:
             tree = ''
             for child in children:
-                tree = tree + self._render_tree(child, [False], depth)
+                tree = tree + await self._render_tree(child, [False], depth)
         else:
             tree = line + '\n'
             if depth is None or depth > 0:
                 if depth is not None:
                     depth = depth - 1
                 for i in range(len(children)):
-                    margin.append(i<len(children)-1)
+                    margin.append(i < len(children) - 1)
                     if do_list:
                         new_lines, new_paths = \
-                                self._render_tree(children[i], margin, depth,
-                                                  do_list=True)
+                            await self._render_tree(children[i], margin, depth,
+                                                    do_list=True)
                         lines.extend(new_lines)
                         paths.extend(new_paths)
                     else:
                         tree = tree \
-                                + self._render_tree(children[i], margin, depth)
+                               + await self._render_tree(children[i], margin, depth)
                     margin.pop()
 
         if root_call:
@@ -871,7 +876,6 @@ class ConfigNode(object):
                 return (lines, paths)
             else:
                 return tree
-
 
     def ui_complete_ls(self, parameters, text, current_param):
         '''
@@ -921,11 +925,11 @@ class ConfigNode(object):
                 except ValueError:
                     self.shell.log.debug("Text is not a number.")
                     return []
-            return [ text + number for number
+            return [text + number for number
                     in [str(num) for num in range(10)]
                     if (text + number).startswith(text)]
 
-    def ui_command_cd(self, path=None):
+    async def ui_command_cd(self, path=None):
         '''
         Change current path to path.
 
@@ -975,7 +979,7 @@ class ConfigNode(object):
             while not exists:
                 if self.shell.prefs['path_history_index'] > 0:
                     self.shell.prefs['path_history_index'] = \
-                            self.shell.prefs['path_history_index'] - 1
+                        self.shell.prefs['path_history_index'] - 1
                     index = self.shell.prefs['path_history_index']
                     path = self.shell.prefs['path_history'][index]
                     try:
@@ -995,15 +999,15 @@ class ConfigNode(object):
         # Go forward in history
         if path == '>':
             if self.shell.prefs['path_history_index'] == \
-               len(self.shell.prefs['path_history']) - 1:
+                    len(self.shell.prefs['path_history']) - 1:
                 self.shell.log.info("Reached the end of path history.")
                 return self
             exists = False
             while not exists:
                 if self.shell.prefs['path_history_index'] \
-                   < len(self.shell.prefs['path_history']) - 1:
+                        < len(self.shell.prefs['path_history']) - 1:
                     self.shell.prefs['path_history_index'] = \
-                            self.shell.prefs['path_history_index'] + 1
+                        self.shell.prefs['path_history_index'] + 1
                     index = self.shell.prefs['path_history_index']
                     path = self.shell.prefs['path_history'][index]
                     try:
@@ -1015,7 +1019,7 @@ class ConfigNode(object):
                 else:
                     path = self.path
                     self.shell.prefs['path_history_index'] \
-                            = len(self.shell.prefs['path_history'])
+                        = len(self.shell.prefs['path_history'])
                     self.shell.prefs['path_history'].append(path)
                     exists = True
             self.shell.log.info('Taking you back to %s.' % path)
@@ -1023,7 +1027,7 @@ class ConfigNode(object):
 
         # Use an urwid walker to select the path
         if path is None:
-            lines, paths = self._render_tree(self.get_root(), do_list=True)
+            lines, paths = await self._render_tree(self.get_root(), do_list=True)
             start_pos = paths.index(self.path)
             selected = self._lines_walker(lines, start_pos=start_pos)
             path = paths[selected]
@@ -1038,7 +1042,7 @@ class ConfigNode(object):
         if target_node.path != self.shell.prefs['path_history'][index]:
             # Truncate the hostory to retain current path as last one
             self.shell.prefs['path_history'] = \
-                    self.shell.prefs['path_history'][:index+1]
+                self.shell.prefs['path_history'][:index + 1]
             # Append the new path and update the index
             self.shell.prefs['path_history'].append(target_node.path)
             self.shell.prefs['path_history_index'] = index + 1
@@ -1076,10 +1080,10 @@ class ConfigNode(object):
                 widget, pos = content.get_focus()
                 if key == 'up':
                     if pos > 0:
-                        content.set_focus(pos-1)
+                        content.set_focus(pos - 1)
                 elif key == 'down':
                     try:
-                        content.set_focus(pos+1)
+                        content.set_focus(pos + 1)
                     except IndexError:
                         pass
                 elif key == 'enter':
@@ -1439,7 +1443,7 @@ class ConfigNode(object):
 
         nb_params = len(pparams) + len(kparams)
         nb_standard_params = len(pparams) \
-                + len([param for param in kparams if param in args])
+                             + len([param for param in kparams if param in args])
         nb_extended_params = nb_params - nb_standard_params
 
         self.shell.log.debug("Min params: %d" % nb_min_params)
@@ -1447,7 +1451,7 @@ class ConfigNode(object):
         self.shell.log.debug("Required params: %s" % ", ".join(req_params))
         self.shell.log.debug("Optional params: %s" % ", ".join(opt_params))
         self.shell.log.debug("Got %s standard params." % nb_standard_params)
-        self.shell.log.debug("Got %s extended params." %  nb_extended_params)
+        self.shell.log.debug("Got %s extended params." % nb_extended_params)
         self.shell.log.debug("Variable positional params: %s" % pp)
         self.shell.log.debug("Variable keyword params: %s" % kw)
 
@@ -1478,8 +1482,8 @@ class ConfigNode(object):
                     % param)
 
         if nb_opt_params == 0 \
-           and nb_standard_params != nb_min_params \
-           and pp is None:
+                and nb_standard_params != nb_min_params \
+                and pp is None:
             raise ExecutionError(
                 "Got %d positionnal parameters, expected exactly %d."
                 % (nb_standard_params, nb_min_params))
@@ -1497,8 +1501,8 @@ class ConfigNode(object):
         prefix = self.ui_command_method_prefix
         prefix_len = len(prefix)
         return tuple([name[prefix_len:] for name in dir(self)
-                if name.startswith(prefix) and name != prefix
-                and inspect.ismethod(getattr(self, name))])
+                      if name.startswith(prefix) and name != prefix
+                      and inspect.ismethod(getattr(self, name))])
 
     def get_group_getter(self, group):
         '''
@@ -1682,7 +1686,7 @@ class ConfigNode(object):
             self.get_group_setter(group)
 
         self._configuration_groups[group][param] = \
-                [type, description, writable]
+            [type, description, writable]
 
     def list_config_groups(self):
         '''
@@ -1729,7 +1733,7 @@ class ConfigNode(object):
             raise ValueError("Not such parameter %s in configuration group %s"
                              % (param, group))
         (p_type, p_description, p_writable) = \
-                self._configuration_groups[group][param]
+            self._configuration_groups[group][param]
 
         return dict(name=param, group=group, type=p_type,
                     description=p_description, writable=p_writable)
@@ -1741,7 +1745,7 @@ class ConfigNode(object):
                     doc="Gets or sets the node's name.")
 
     path = property(_get_path,
-                   doc="Gets the node's path.")
+                    doc="Gets the node's path.")
 
     children = property(_list_children,
                         doc="Lists the node's children.")
@@ -1791,6 +1795,7 @@ class ConfigNode(object):
         @rtype: ConfigNode
         @raise ValueError: If there is no node with that path.
         '''
+
         def adjacent_node(name):
             '''
             Returns an adjacent node or ourself.
@@ -1804,7 +1809,6 @@ class ConfigNode(object):
                     return self
             else:
                 return self.get_child(name)
-
 
         # Cleanup the path
         if path is None or path == '':
@@ -1823,7 +1827,6 @@ class ConfigNode(object):
         if len(path) > 1:
             path = path.rstrip(self._path_separator)
         self.shell.log.debug("Looking for path '%s'" % path)
-
 
         # Absolute path - make relative and pass on to root node
         if path.startswith(self._path_separator):
