@@ -117,8 +117,8 @@ class ConfigShell(object):
         Creates a new ConfigShell.
         @param preferences_dir: Directory to load/save preferences from/to
         """
-        self._current_node = None
-        self._root_node = None
+        self._current_node: ConfigNode | None = None
+        self._root_node: ConfigNode | None = None
         self._exit = False
 
         # Grammar of the command line
@@ -140,7 +140,7 @@ class ConfigShell(object):
             readline.set_completer_delims(r'\t\n ~!#$^&(){}\|;\'",?')
             readline.set_completion_display_matches_hook(self._display_completions)
 
-        self.log = log.Log(console_level='debug')
+        self.log = log.Log()
 
         if preferences_dir is not None:
             preferences_dir = os.path.expanduser(preferences_dir)
@@ -629,14 +629,15 @@ class ConfigShell(object):
 
         (path, iterall) = path.partition('*')[:2]
         if iterall:
+            cpl_path = path
             try:
                 target = self._current_node.get_node(path)
             except ValueError:
-                cpl_path = path
+                pass
             else:
                 children = target.children
                 if children:
-                    cpl_path = children[0].path
+                    cpl_path = list(children)[0].path
         else:
             cpl_path = path
 
@@ -645,13 +646,9 @@ class ConfigShell(object):
         elif current_token == 'path':
             completions = self._complete_token_path(text)
         elif current_token == 'pparam':
-            completions = \
-                self._complete_token_pparam(text, cpl_path, command,
-                                            pparams, kparams)
+            completions = self._complete_token_pparam(text, cpl_path, command, pparams, kparams)
         elif current_token == 'kparam':
-            completions = \
-                self._complete_token_kparam(text, cpl_path, command,
-                                            pparams, kparams)
+            completions = self._complete_token_kparam(text, cpl_path, command, pparams, kparams)
         else:
             self.log.debug(f'Cannot complete unknown token {current_token}.')
 
@@ -689,7 +686,6 @@ class ConfigShell(object):
             except EOFError:
                 self.con.raw_write('exit\n')
                 cmdline = "exit"
-            print(cmdline)
             await self.run_cmdline_async(cmdline)
             if self._save_history:
                 try:

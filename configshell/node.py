@@ -87,29 +87,29 @@ class ConfigNode(object):
         the ConfigNode will be a root node.
         @param shell: The shell to attach a root node to.
         """
-        self._name = name
-        self._children: set[ConfigNode] = set()
+        self.name = name
+        self.children: set[ConfigNode] = set()
         if parent is None:
             if shell is None:
                 raise ValueError("A root ConfigNode must have a shell.")
             else:
-                self._parent: ConfigNode | None = None
+                self.parent: ConfigNode | None = None
                 self._shell: ConfigShell | None = shell
                 shell.attach_root_node(self)
         else:
             if shell is None:
-                self._parent: ConfigNode | None = parent
+                self.parent: ConfigNode | None = parent
                 self._shell: ConfigShell | None = None
             else:
                 raise ValueError("A non-root ConfigNode can't have a shell.")
 
-        if self._parent is not None:
-            for sibling in self._parent._children:
+        if self.parent is not None:
+            for sibling in self.parent.children:
                 if sibling.name == name:
-                    raise ValueError(f'Name {self._name} already used by a sibling.')
-            self._parent._children.add(self)
+                    raise ValueError(f'Name {self.name} already used by a sibling.')
+            self.parent.children.add(self)
 
-        self._configuration_groups: dict[str, list[str, str, str]] = {}
+        self._configuration_groups: dict[str, dict[str, list[str, str, str]]] = {}
 
         self.define_config_group_param(
             'global', 'tree_round_nodes', 'bool',
@@ -1263,28 +1263,8 @@ class ConfigNode(object):
         else:
             return self.name
 
-    def _get_parent(self):
-        """
-        Get this node's parent.
-        @return: The node's parent.
-        @rtype: ConfigNode
-        """
-        return self._parent
-
-    def _get_name(self):
-        """
-        @return: The node's name.
-        @rtype: str
-        """
-        return self._name
-
-    def _set_name(self, name: str):
-        """
-        Sets the node's name.
-        """
-        self._name = name
-
-    def _get_path(self):
+    @property
+    def path(self):
         """
         @returns: The absolute path for this node.
         @rtype: str
@@ -1292,20 +1272,13 @@ class ConfigNode(object):
         subpath = self._path_separator + self.name
         if self.is_root():
             return self._path_separator
-        elif self._parent.is_root():
+        elif self.parent.is_root():
             return subpath
         else:
-            return self._parent.path + subpath
+            return self.parent.path + subpath
 
-    def _list_children(self):
-        """
-        Lists the children of this node.
-        @return: The set of children nodes.
-        @rtype: set of ConfigNode
-        """
-        return self._children
-
-    def _get_shell(self):
+    @property
+    def shell(self):
         """
         Gets the shell attached to ConfigNode tree.
         """
@@ -1324,7 +1297,7 @@ class ConfigNode(object):
         @returns: (description, is_healthy)
         @rtype: (str, bool or None)
         """
-        return ('', None)
+        return '', None
 
     def execute_command(self, command: str, pparams: list[str] = None, kparams: dict[str, str] = None):
         """
@@ -1602,7 +1575,7 @@ class ConfigNode(object):
             self._configuration_groups[group] = {}
 
         if description is None:
-            description = "The %s %s parameter." % (param, group)
+            description = f'The {param} {group} parameter.'
 
         # Fail early if the type and set/get helpers don't exist
         self.get_type_method(type_)
@@ -1610,8 +1583,7 @@ class ConfigNode(object):
         if writable:
             self.get_group_setter(group)
 
-        self._configuration_groups[group][param] = \
-            [type_, description, writable]
+        self._configuration_groups[group][param] = [type_, description, writable]
 
     def list_config_groups(self):
         """
@@ -1649,30 +1621,13 @@ class ConfigNode(object):
         @raise ValueError: If the parameter or group does not exist.
         """
         if group not in self.list_config_groups():
-            raise ValueError("Not such configuration group %s" % group)
+            raise ValueError(f'Not such configuration group {group}')
         if param not in self.list_group_params(group):
-            raise ValueError("Not such parameter %s in configuration group %s"
-                             % (param, group))
-        (p_type, p_description, p_writable) = \
-            self._configuration_groups[group][param]
+            raise ValueError(f'Not such parameter {param} in configuration group {group}')
+        (p_type, p_description, p_writable) = self._configuration_groups[group][param]
 
         return dict(name=param, group=group, type=p_type,
                     description=p_description, writable=p_writable)
-
-    shell = property(_get_shell,
-                     doc="Gets the shell attached to ConfigNode tree.")
-
-    name = property(_get_name, _set_name,
-                    doc="Gets or sets the node's name.")
-
-    path = property(_get_path,
-                    doc="Gets the node's path.")
-
-    children = property(_list_children,
-                        doc="Lists the node's children.")
-
-    parent = property(_get_parent,
-                      doc="Gets the node's parent.")
 
     def is_root(self):
         """
@@ -1691,7 +1646,7 @@ class ConfigNode(object):
         @rtype: ConfigNode
         @raise ValueError: If there is no child named by name.
         """
-        for child in self._children:
+        for child in self.children:
             if child.name == name:
                 return child
         else:
@@ -1703,9 +1658,9 @@ class ConfigNode(object):
         Removes a child from our children's list.
         @param child: The child to remove.
         """
-        self._children.remove(child)
+        self.children.remove(child)
 
-    def get_node(self, path: str):
+    def get_node(self, path: str) -> ConfigNode:
         """
         Looks up a node by path in the nodes tree.
         @param path: The node's path.
