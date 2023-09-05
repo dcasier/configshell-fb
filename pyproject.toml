@@ -1,11 +1,11 @@
 [tool.poetry]
-name = "configshell-fb"
+name = "configshell-fb-async"
 version = "1.2.0"
 description = "A framework to implement simple but nice CLIs."
 authors = []
-packages = [{ include = "configshell-fb", format = "wheel" }]
+packages = [{ include = "configshell_fb_async", format = "wheel" }]
 include = [
-    "configshell-fb/**/*.py",
+    "configshell_fb_async/**/*.py",
 ]
 
 [tool.poetry.dependencies]
