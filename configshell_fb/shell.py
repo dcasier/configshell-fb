@@ -22,8 +22,7 @@ import os
 # A fix for frozen packages
 import signal
 import sys
-from asyncio import iscoroutine
-from typing import TYPE_CHECKING, Coroutine, Any
+from typing import TYPE_CHECKING, Sequence
 
 if TYPE_CHECKING:
     from typing import TextIO
@@ -132,13 +131,13 @@ class ConfigShell(object):
         parameter = kparam | pparam
         parameters = OneOrMore(parameter)
         bookmark = Regex('@([A-Za-z0-9:_.]|-)+')
-        pathstd = Regex(r'([A-Za-z0-9:_.\[\]]|-)*' + '/' + r'([A-Za-z0-9:_.\[\]/]|-)*') | '..' | '.'
+        pathstd = Regex('([A-Za-z0-9:_.\[\]@]|-)*' + '/' + '([A-Za-z0-9:_.\[\]@/]|-)*') | '..' | '.'
         path = locatedExpr(bookmark | pathstd | '*')('path')
         parser = Optional(path) + Optional(command) + Optional(parameters)
         self._parser = parser
 
         if tty:
-            readline.set_completer_delims(r'\t\n ~!#$^&(){}\|;\'",?')
+            readline.set_completer_delims('\t\n ~!#$^&(){}|;\'",?')
             readline.set_completion_display_matches_hook(self._display_completions)
 
         self.log = log.Log()
@@ -187,13 +186,14 @@ class ConfigShell(object):
 
     # Private methods
 
-    def _display_completions(self, substitution: str, matches: list[str], max_length: int):
+    def _display_completions(self, substitution: str, matches: Sequence[str], max_length: int):
         """
         Display the completions. Invoked by readline.
         @param substitution: string to complete
         @param matches: list of possible matches
         @param max_length: length of the longest matching item
         """
+
         x_orig = self.con.get_cursor_xy()[0]
         width = self.con.get_width()
         max_length += 2
@@ -338,7 +338,7 @@ class ConfigShell(object):
         (basedir, slash, partial_name) = text.rpartition('/')
         self.log.debug(f'Got basedir={basedir}, partial_name={partial_name}')
         basedir = basedir + slash
-        target = self._current_node.get_node(basedir)
+        target = self._current_node.get_node(basedir, _async_load_=True)
         names = [child.name for child in target.children]
 
         # Iterall path completion
@@ -368,7 +368,7 @@ class ConfigShell(object):
         if len(completions) == 1:
             self.log.debug("One completion left.")
             if not completions[0].endswith("* "):
-                if not self._current_node.get_node(completions[0]).children:
+                if not self._current_node.get_node(completions[0], _async_load_=True).children:
                     completions[0] = completions[0].rstrip('/') + ' '
 
         self._current_token = \
@@ -390,9 +390,8 @@ class ConfigShell(object):
         @rtype: list of str
         """
         completions = []
-        target = self._current_node.get_node(path)
-        cmd_params, free_pparams, free_kparams = \
-            target.get_command_signature(command)
+        target = self._current_node.get_node(path, _async_load_=True)
+        cmd_params, free_pparams, free_kparams = target.get_command_signature(command)
         current_parameters = {}
         for index in range(len(pparams)):
             if index < len(cmd_params):
@@ -401,9 +400,7 @@ class ConfigShell(object):
             current_parameters[key] = value
         self._completion_help_topic = command
         completion_method = target.get_completion_method(command)
-        loop = asyncio.get_event_loop()
-        self.log.debug("Command %s accepts parameters %s."
-                       % (command, cmd_params))
+        self.log.debug(f'Command {command} accepts parameters {cmd_params}.')
 
         # Do we still accept positional params ?
         pparam_ok = True
@@ -415,8 +412,7 @@ class ConfigShell(object):
                     self.log.debug(
                         "No more possible pparams (because of kparams).")
                     break
-            elif (text.strip() == '' and len(pparams) == len(cmd_params)) \
-                    or (len(pparams) > len(cmd_params)):
+            elif (text.strip() == '' and len(pparams) == len(cmd_params)) or (len(pparams) > len(cmd_params)):
                 pparam_ok = False
                 self.log.debug("No more possible pparams.")
                 break
@@ -434,13 +430,9 @@ class ConfigShell(object):
             self._current_parameter = cmd_params[pparam_index]
             self.log.debug(f'Completing pparam {self._current_parameter}.')
             if completion_method:
-                pparam_completions = completion_method(
-                    current_parameters, text, self._current_parameter)
-                if iscoroutine(pparam_completions):
-                    task = loop.create_task(pparam_completions)
-                    # print('HERE 1', task, pparam_completions)
-                    pparam_completions = loop.run_until_complete(task)
-                    print('HERE 2', pparam_completions)
+                pparam_completions = completion_method(current_parameters, text, self._current_parameter)
+                if asyncio.iscoroutine(pparam_completions):
+                    pparam_completions = asyncio.run(pparam_completions)
                 if pparam_completions is not None:
                     completions.extend(pparam_completions)
 
@@ -481,9 +473,8 @@ class ConfigShell(object):
                 self.log.debug("Calling completion method for free params.")
                 free_completions = completion_method(
                     current_parameters, text, '*')
-                if iscoroutine(free_completions):
-                    print('HERE 2')
-                    free_completions = loop.run_until_complete(free_completions)
+                if asyncio.iscoroutine(free_completions):
+                    free_completions = asyncio.run(free_completions)
                 do_free_pparams = False
                 do_free_kparams = False
                 for free_completion in free_completions:
@@ -494,9 +485,7 @@ class ConfigShell(object):
 
                 if do_free_pparams:
                     self._current_token = \
-                        self.con.render_text(
-                            free_pparams, self.prefs['color_parameter']) \
-                        + '|' + self._current_token
+                        self.con.render_text(free_pparams, self.prefs['color_parameter']) + '|' + self._current_token
                     self._current_token = self._current_token.rstrip('|')
                     if not self._current_parameter:
                         self._current_parameter = 'free_parameter'
@@ -504,9 +493,7 @@ class ConfigShell(object):
                 if do_free_kparams:
                     if not 'keyword=' in self._current_token:
                         self._current_token = \
-                            self.con.render_text(
-                                'keyword=', self.prefs['color_keyword']) \
-                            + '|' + self._current_token
+                            self.con.render_text('keyword=', self.prefs['color_keyword']) + '|' + self._current_token
                         self._current_token = self._current_token.rstrip('|')
                     if not self._current_parameter:
                         self._current_parameter = 'free_parameter'
@@ -528,7 +515,7 @@ class ConfigShell(object):
         @rtype: list of str
         """
         self.log.debug("Called for text='%s'" % text)
-        target = self._current_node.get_node(path)
+        target = self._current_node.get_node(path, _async_load_=True)
         cmd_params = target.get_command_signature(command)[0]
         self.log.debug(f'Command {command} accepts parameters {cmd_params}.')
 
@@ -542,12 +529,11 @@ class ConfigShell(object):
         for key, value in kparams.items():
             current_parameters[key] = value
         completion_method = target.get_completion_method(command)
-        loop = asyncio.get_event_loop()
         completions = []
         if completion_method:
             completions = completion_method(current_parameters, current_value, keyword)
-            if iscoroutine(completions):
-                completions = loop.run_until_complete(completions)
+            if asyncio.iscoroutine(completions):
+                completions = asyncio.run(completions)
             if completions is None:
                 completions = []
 
@@ -574,12 +560,12 @@ class ConfigShell(object):
             self._completion_help_topic = ''
             self._current_parameter = ''
 
-            (parse_results, path, command, pparams, kparams) = \
-                self._parse_cmdline(cmdline)
+            (parse_results, path, command, pparams, kparams) = self._parse_cmdline(cmdline)
 
             beg = readline.get_begidx()
             end = readline.get_endidx()
             current_token = None
+
             if beg == end:
                 # No text under the cursor, fake it so that the parser
                 # result_trees gives us a token name on a second parser call
@@ -601,9 +587,8 @@ class ConfigShell(object):
             elif kparams and beg in [k.locn_start for k in parse_results.kparams]:
                 current_token = 'kparam'
 
-            self._current_completions = self._dispatch_completion(path, command,
-                                                                  pparams, kparams,
-                                                                  text, current_token)
+            self._current_completions = self._dispatch_completion(
+                path, command, pparams, kparams, text, current_token)
 
             self.log.debug(f'Returning completions {str(self._current_completions)} to readline.')
 
@@ -643,7 +628,8 @@ class ConfigShell(object):
         if iterall:
             cpl_path = path
             try:
-                target = self._current_node.get_node(path)
+
+                target = self._current_node.get_node(path, _async_load_=True)
             except ValueError:
                 pass
             else:
@@ -677,12 +663,9 @@ class ConfigShell(object):
             half = (prompt_length - 3) // 2
             prompt_path = f'{prompt_path[:half]}...{prompt_path[-half:]}'
 
-        if 'prompt_msg' in dir(self._current_node):
-            return f'{self._current_node.prompt_msg()}{prompt_path}> '
-        else:
-            return f'{prompt_path}> '
+        return f'{self._current_node.prompt_msg()}{prompt_path}> '
 
-    async def _cli_loop_async(self):
+    def _cli_loop_async(self):
         """
         Starts the configuration shell interactive loop, that:
             - Goes to the last current path
@@ -698,7 +681,7 @@ class ConfigShell(object):
             except EOFError:
                 self.con.raw_write('exit\n')
                 cmdline = "exit"
-            await self.run_cmdline_async(cmdline)
+            self.run_cmdline_async(cmdline)
             if self._save_history:
                 try:
                     readline.write_history_file(self._cmd_history)
@@ -736,7 +719,7 @@ class ConfigShell(object):
         self.log.debug(f'Parse gave path={path} command={command} pparams={str(pparams)} kparams={str(kparams)}')
         return parse_results, path, command, pparams, kparams
 
-    async def _execute_command(self, path: str, command: str, pparams: list[str], kparams: dict[str, str]):
+    def _execute_command(self, path: str, command: str, pparams: list[str], kparams: dict[str, str]):
         """
         Calls the target node to execute a command.
         Behavior depends on the target node command's result:
@@ -765,7 +748,7 @@ class ConfigShell(object):
                 pparams = ['.']
 
         try:
-            target = self._current_node.get_node(path)
+            target = self._current_node.get_node(path, _async_load_=True)
         except ValueError as msg:
             raise ExecutionError(str(msg))
 
@@ -777,21 +760,22 @@ class ConfigShell(object):
         for target in targets:
             if iterall:
                 self.con.display(f'[{target.path}]')
-            result: Coroutine | Any = target.execute_command(command, pparams, kparams)
-            if iscoroutine(result):
-                result: Coroutine
-                result = await result
+            try:
+                result = target.execute_command(command, pparams, kparams)
+            except Exception as e:
+                self.log.exception('Internal error')
+                return
         self.log.debug(f'Command execution returned {result}')
         if isinstance(result, ConfigNode):
             self._current_node = result
         elif result == 'EXIT':
             self._exit = True
         elif result is not None:
-            raise ExecutionError(f'Unexpected result: {result}')
+            self.log.error(f'Unexpected result: {result}')
 
     # Public methods
 
-    async def run_cmdline_async(self, cmdline: str):
+    def run_cmdline_async(self, cmdline: str):
         """
         Runs the specified command. Global commands are checked first,
         then local commands from the current node.
@@ -804,9 +788,9 @@ class ConfigShell(object):
         if cmdline:
             self.log.verbose(f'Running command line {cmdline}.')
             path, command, pparams, kparams = self._parse_cmdline(cmdline)[1:]
-            await self._execute_command(path, command, pparams, kparams)
+            self._execute_command(path, command, pparams, kparams)
 
-    async def run_script_async(self, script_path: str, exit_on_error: bool = True):
+    def run_script_async(self, script_path: str, exit_on_error: bool = True):
         """
         Runs the script located at script_path.
         Script runs always start from the root context.
@@ -817,14 +801,14 @@ class ConfigShell(object):
         try:
             script_path = os.path.expanduser(script_path)
             script_fd = open(script_path, 'r')
-            await self.run_stdin_async(script_fd, exit_on_error)
+            self.run_stdin_async(script_fd, exit_on_error)
         except IOError as msg:
             raise IOError(msg)
         finally:
             if script_fd is not None:
                 script_fd.close()
 
-    async def run_stdin_async(self, file_descriptor: TextIO | list[str] = sys.stdin, exit_on_error: bool = True):
+    def run_stdin_async(self, file_descriptor: TextIO | list[str] = sys.stdin, exit_on_error: bool = True):
         """
         Reads commands to be run from a file descriptor, stdin by default.
         The run always starts from the root context.
@@ -834,7 +818,7 @@ class ConfigShell(object):
         self._current_node = self._root_node
         for cmdline in file_descriptor:
             try:
-                await self.run_cmdline_async(cmdline.strip())
+                self.run_cmdline_async(cmdline.strip())
             except Exception as msg:
                 self.log.exception(msg)
                 if exit_on_error is True:
@@ -842,7 +826,7 @@ class ConfigShell(object):
 
                 self.log.exception("Keep running after an error.")
 
-    async def run_interactive_async(self):
+    def run_interactive_async(self):
         """
         Starts interactive CLI mode.
         """
@@ -851,16 +835,17 @@ class ConfigShell(object):
         if history and index:
             if index < len(history):
                 try:
-                    target = self._root_node.get_node(history[index])
+                    target = self._root_node.get_node(history[index], _async_load_=True)
                 except ValueError:
                     self._current_node = self._root_node
                 else:
                     self._current_node = target
 
         while True:
+            old_completer = None
             try:
                 old_completer = readline.get_completer()
-                await self._cli_loop_async()
+                self._cli_loop_async()
                 break
             except KeyboardInterrupt:
                 self.con.raw_write('\n')
@@ -868,7 +853,8 @@ class ConfigShell(object):
                 self.log.exception(e)
                 self.con.raw_write('\n')
             finally:
-                readline.set_completer(old_completer)
+                if old_completer is not None:
+                    readline.set_completer(old_completer)
 
     def attach_root_node(self, root_node: ConfigNode):
         """

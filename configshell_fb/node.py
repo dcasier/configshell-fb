@@ -17,9 +17,10 @@ under the License.
 
 from __future__ import annotations
 
+import asyncio
 import inspect
 import re
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Coroutine, Any, Awaitable
 
 if TYPE_CHECKING:
     from configshell_fb import ConfigShell
@@ -87,6 +88,7 @@ class ConfigNode(object):
         the ConfigNode will be a root node.
         @param shell: The shell to attach a root node to.
         """
+        self.loaded = False
         self.name = name
         self.children: set[ConfigNode] = set()
         if parent is None:
@@ -156,6 +158,24 @@ class ConfigNode(object):
 
         if self.shell.prefs['bookmarks'] is None:
             self.shell.prefs['bookmarks'] = {}
+
+    async def load(self, reload=False):
+        if reload is True:
+            self.loaded = False
+            self.children = set()
+        if self.loaded is False:
+            self.shell.log.debug(f'[{self.path}] Loading')
+            await self._load()
+        self.loaded = True
+
+    def reload(self) -> Awaitable:
+        return self.load(reload=True)
+
+    async def _load(self):
+        pass
+
+    def prompt_msg(self):
+        return ''
 
     # User interface types
 
@@ -639,7 +659,7 @@ class ConfigNode(object):
         self.shell.log.debug("Returning completions %s." % str(completions))
         return completions
 
-    async def ui_command_ls(self, path: str = None, depth: int | str = None):
+    def ui_command_ls(self, path: str = None, depth: int | str = None):
         """
         Display either the nodes tree relative to path or to the current node.
 
@@ -661,7 +681,7 @@ class ConfigNode(object):
         cd bookmarks
         """
         try:
-            target = self.get_node(path)
+            target = self.get_node(path, _async_load_=True)
         except ValueError as msg:
             raise ExecutionError(str(msg))
 
@@ -674,10 +694,10 @@ class ConfigNode(object):
 
         if depth == 0:
             depth = None
-        tree = await self._render_tree(target, depth=depth)
+        tree = self._render_tree(target, depth=depth)
         self.shell.con.display(tree)
 
-    async def _render_tree(
+    def _render_tree(
             self, root: ConfigNode, margin: list[bool] = None, depth: int | str = None, do_list: bool = False):
         """
         Renders an ascii representation of a tree of ConfigNodes.
@@ -728,7 +748,7 @@ class ConfigNode(object):
 
         summary = root.summary()
         if inspect.iscoroutine(summary):
-            summary = await summary
+            summary = summary
         (description, is_healthy) = summary
         if not description:
             if is_healthy is True:
@@ -809,7 +829,7 @@ class ConfigNode(object):
                 and not do_list:
             tree = ''
             for child in children:
-                tree = tree + await self._render_tree(child, [False], depth)
+                tree = tree + self._render_tree(child, [False], depth)
         else:
             tree = line + '\n'
             if depth is None or depth > 0:
@@ -819,13 +839,13 @@ class ConfigNode(object):
                     margin.append(i < len(children) - 1)
                     if do_list:
                         new_lines, new_paths = \
-                            await self._render_tree(children[i], margin, depth,
-                                                    do_list=True)
+                            self._render_tree(children[i], margin, depth,
+                                              do_list=True)
                         lines.extend(new_lines)
                         paths.extend(new_paths)
                     else:
                         tree = tree \
-                               + await self._render_tree(children[i], margin, depth)
+                               + self._render_tree(children[i], margin, depth)
                     margin.pop()
 
         if root_call:
@@ -863,7 +883,7 @@ class ConfigNode(object):
                     else:
                         completions.append("%s%s" % (basedir, name))
             if len(completions) == 1:
-                if not self.get_node(completions[0]).children:
+                if not self.get_node(completions[0], _async_load_=True).children:
                     completions[0] = completions[0].rstrip('/') + ' '
 
             # Bookmarks
@@ -888,7 +908,7 @@ class ConfigNode(object):
                     in [str(num) for num in range(10)]
                     if (text + number).startswith(text)]
 
-    async def ui_command_cd(self, path: str = None):
+    def ui_command_cd(self, path: str = None):
         """
         Change current path to path.
 
@@ -986,7 +1006,7 @@ class ConfigNode(object):
 
         # Use an urwid walker to select the path
         if path is None:
-            lines, paths = await self._render_tree(self.get_root(), do_list=True)
+            lines, paths = self._render_tree(self.get_root(), do_list=True)
             start_pos = paths.index(self.path)
             selected = self._lines_walker(lines, start_pos=start_pos)
             path = paths[selected]
@@ -1051,7 +1071,7 @@ class ConfigNode(object):
         loop.run()
         return listbox.focus_position
 
-    async def ui_complete_cd(self, parameters: dict[str, str], text: str, current_param: str):
+    def ui_complete_cd(self, parameters: dict[str, str], text: str, current_param: str):
         """
         Parameter auto-completion method for user command cd.
         @param parameters: Parameters on the command line.
@@ -1060,7 +1080,9 @@ class ConfigNode(object):
         @return: Possible completions
         @rtype: list of str
         """
+
         if current_param == 'path':
+            completions: list[str] | Coroutine[Any, Any, list[str]]
             completions = self.ui_complete_ls(parameters, text, current_param)
             completions.extend([nav for nav in ['<', '>']
                                 if nav.startswith(text)])
@@ -1327,7 +1349,10 @@ class ConfigNode(object):
             raise ExecutionError(f'Command not found {command}')
 
         self.assert_params(method, pparams, kparams)
-        return method(*pparams, **kparams)
+        result = method(*pparams, **kparams)
+        if asyncio.iscoroutine(result):
+            result = asyncio.run(result)
+        return result
 
     def assert_params(self, method, pparams: list[str], kparams: dict[str, str]):
         """
@@ -1647,8 +1672,7 @@ class ConfigNode(object):
             if child.name == name:
                 return child
         else:
-            raise ValueError("No such path %s/%s"
-                             % (self.path.rstrip('/'), name))
+            raise ValueError(f"'No such path {self.path.rstrip('/')}/{name}'")
 
     def remove_child(self, child: ConfigNode):
         """
@@ -1657,28 +1681,15 @@ class ConfigNode(object):
         """
         self.children.remove(child)
 
-    def get_node(self, path: str) -> ConfigNode:
+    def get_node(self, path: str, _async_load_=False) -> ConfigNode:
         """
         Looks up a node by path in the nodes tree.
         @param path: The node's path.
+        @param _async_load_: Async (recursive) node load instruction
         @return: The node that has the given path.
         @rtype: ConfigNode
         @raise ValueError: If there is no node with that path.
         """
-
-        def adjacent_node(name: str):
-            """
-            Returns an adjacent node or ourself.
-            """
-            if name == self._path_current:
-                return self
-            elif name == self._path_previous:
-                if self.parent is not None:
-                    return self.parent
-                else:
-                    return self
-            else:
-                return self.get_child(name)
 
         # Cleanup the path
         if path is None or path == '':
@@ -1692,26 +1703,49 @@ class ConfigNode(object):
             else:
                 raise ValueError(f'No such bookmark {bookmark}')
 
-        # More cleanup
-        path = re.sub('%s+' % self._path_separator, self._path_separator, path)
+        # Remove duplicate 'separator'
+        path = re.sub(f'{self._path_separator}+', self._path_separator, path)
         if len(path) > 1:
             path = path.rstrip(self._path_separator)
-        self.shell.log.debug(f"Looking for path '{path}'")
+
+        _msg = f"Looking for path '{path}'"
+        if _async_load_ is True:
+            _msg += ' (async node load)'
+        self.shell.log.debug(_msg)
 
         # Absolute path - make relative and pass on to root node
         if path.startswith(self._path_separator):
             next_node = self.get_root()
             next_path = path.lstrip(self._path_separator)
             if next_path:
-                return next_node.get_node(next_path)
+                return next_node.get_node(next_path, _async_load_=_async_load_)
             else:
                 return next_node
 
         # Relative path
         if self._path_separator in path:
             next_node_name, next_path = path.split(self._path_separator, 1)
-            next_node = adjacent_node(next_node_name)
-            return next_node.get_node(next_path)
+            next_node = self.get_node_adjacent(next_node_name)
+            if _async_load_ is True:
+                asyncio.run(next_node.load())
+            return next_node.get_node(next_path, _async_load_=_async_load_)
 
         # Path is just one of our children
-        return adjacent_node(path)
+        _node = self.get_node_adjacent(path)
+        if _async_load_ is True:
+            asyncio.run(_node.load())
+        return _node
+
+    def get_node_adjacent(self, name: str):
+        """
+        Returns an adjacent node or ourself.
+        """
+        if name == self._path_current:
+            return self
+        elif name == self._path_previous:
+            if self.parent is not None:
+                return self.parent
+            else:
+                return self
+        else:
+            return self.get_child(name)
