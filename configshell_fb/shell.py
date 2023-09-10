@@ -109,7 +109,7 @@ class ConfigShell(object):
         "loglevel_console": "info",
         "loglevel_file": "debug9",
         "color_mode": True,
-        "prompt_length": 30,
+        "prompt_length": 120,
         "tree_max_depth": 0,
         "tree_status_mode": True,
         "tree_round_nodes": True,
@@ -743,7 +743,7 @@ class ConfigShell(object):
             half = (prompt_length - 3) // 2
             prompt_path = f"{prompt_path[:half]}...{prompt_path[-half:]}"
 
-        return f"{self._current_node.prompt_msg()}{prompt_path}> "
+        return f"{self._current_node.prompt_msg()}{prompt_path} \n> "
 
     def _cli_loop_async(self):
         """
