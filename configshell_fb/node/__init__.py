@@ -111,84 +111,32 @@ class ConfigNode(
                  get more information.
                  """
 
-    def __post_init__(self):
-        if self.parent is None:
-            if self._shell is None:
-                raise ValueError("A root ConfigNode must have a shell.")
-            else:
-                self._shell.attach_root_node(self)
+    @property
+    def path(self):
+        """
+        @returns: The absolute path for this node.
+        @rtype: str
+        """
+        subpath = self._path_separator + self.name
+        if self.is_root():
+            return self._path_separator
+        elif self.parent.is_root():
+            return subpath
         else:
-            if self._shell is not None:
-                raise ValueError("A non-root ConfigNode can't have a shell.")
+            return self.parent.path + subpath
 
-            for sibling in self.parent.children:
-                if sibling.name == self.name:
-                    raise ValueError(f"Name {self.name} already used by a sibling.")
-            self.parent.children.add(self)
+    @property
+    def shell(self):
+        """
+        Gets the shell attached to ConfigNode tree.
+        """
+        if self.is_root():
+            return self._shell
+        else:
+            return self.get_root().shell
 
-        self._configuration_groups: dict[str, dict[str, list[str, str, str]]] = {}
-
-        self.define_config_group_param(
-            "global", "tree_round_nodes", "bool", "Tree node display style."
-        )
-        self.define_config_group_param(
-            "global",
-            "tree_status_mode",
-            "bool",
-            "Whether or not to display status in tree.",
-        )
-        self.define_config_group_param(
-            "global",
-            "tree_max_depth",
-            "number",
-            "Maximum depth of displayed node tree.",
-        )
-        self.define_config_group_param(
-            "global", "tree_show_root", "bool", "Whether or not to display tree root."
-        )
-        self.define_config_group_param(
-            "global", "color_mode", "bool", "Console color display mode."
-        )
-        self.define_config_group_param(
-            "global",
-            "loglevel_console",
-            "loglevel",
-            "Log level for messages going to the console.",
-        )
-        self.define_config_group_param(
-            "global",
-            "loglevel_file",
-            "loglevel",
-            "Log level for messages going to the log file.",
-        )
-        self.define_config_group_param("global", "logfile", "string", "Logfile to use.")
-        self.define_config_group_param(
-            "global", "color_default", "colordefault", "Default text display color."
-        )
-        self.define_config_group_param(
-            "global", "color_path", "color", "Color to use for path completions"
-        )
-        self.define_config_group_param(
-            "global", "color_command", "color", "Color to use for command completions."
-        )
-        self.define_config_group_param(
-            "global",
-            "color_parameter",
-            "color",
-            "Color to use for parameter completions.",
-        )
-        self.define_config_group_param(
-            "global", "color_keyword", "color", "Color to use for keyword completions."
-        )
-        self.define_config_group_param(
-            "global",
-            "prompt_length",
-            "number",
-            "Max length of the shell prompt path, 0 for infinite.",
-        )
-
-        if self.shell.prefs["bookmarks"] is None:
-            self.shell.prefs["bookmarks"] = {}
+    def exist(self, name: str):
+        return name in [c.name for c in self.children]
 
     async def load(self, reload=False):
         if reload is True:
@@ -207,8 +155,6 @@ class ConfigNode(
 
     def prompt_msg(self):
         return ""
-
-    # User interface get/set methods
 
     def ui_setgroup_global(self, parameter: str, value):
         """
@@ -279,7 +225,208 @@ class ConfigNode(
         """
         return getattr(self, f"{self.ui_type_method_prefix}{type_}")
 
-    # User interface commands
+    def summary(self):
+        """
+        Returns a tuple with a status/description string for this node and a
+        health flag, to be displayed along the node's name in object trees,
+        etc.
+        @returns: (description, is_healthy)
+        @rtype: (str, bool or None)
+        """
+        return "", None
+
+    def assert_params(self, method, pparams: list[str], kparams: dict[str, str]):
+        """
+        Checks that positional and keyword parameters match a method
+        definition, or raise an ExecutionError.
+        @param method: The method to check call signature against.
+        @param pparams: The positional parameters.
+        @param kparams: The keyword parameters.
+        @raise ExecutionError: When the check fails.
+        """
+        spec = inspect.getfullargspec(method)
+        args = spec.args[1:]
+        pp = spec.varargs
+        kw = spec.varkw
+
+        if spec.defaults is None:
+            nb_opt_params = 0
+        else:
+            nb_opt_params = len(spec.defaults)
+        nb_max_params = len(args)
+        nb_min_params = nb_max_params - nb_opt_params
+
+        req_params = args[:nb_min_params]
+        opt_params = args[nb_min_params:]
+
+        unexpected_keywords = sorted(set(kparams) - set(args))
+        missing_params = sorted(
+            set(args[len(pparams) :]) - set(opt_params) - set(kparams.keys())
+        )
+
+        nb_params = len(pparams) + len(kparams)
+        nb_standard_params = len(pparams) + len(
+            [param for param in kparams if param in args]
+        )
+        nb_extended_params = nb_params - nb_standard_params
+
+        self.shell.log.debug("Min params: %d" % nb_min_params)
+        self.shell.log.debug("Max params: %d" % nb_max_params)
+        self.shell.log.debug("Required params: %s" % ", ".join(req_params))
+        self.shell.log.debug("Optional params: %s" % ", ".join(opt_params))
+        self.shell.log.debug("Got %s standard params." % nb_standard_params)
+        self.shell.log.debug("Got %s extended params." % nb_extended_params)
+        self.shell.log.debug("Variable positional params: %s" % pp)
+        self.shell.log.debug("Variable keyword params: %s" % kw)
+
+        if len(missing_params) == 1:
+            raise ExecutionError(f"Missing required parameter '{missing_params[0]}'")
+        elif missing_params:
+            raise ExecutionError(
+                "Missing required parameters %s"
+                % ", ".join("'%s'" % missing for missing in missing_params)
+            )
+
+        if kw is None:
+            if len(unexpected_keywords) == 1:
+                raise ExecutionError(
+                    f"Unexpected keyword parameter '{unexpected_keywords[0]}'."
+                )
+            elif unexpected_keywords:
+                raise ExecutionError(
+                    "Unexpected keyword parameters %s."
+                    % ", ".join("'%s'" % kw for kw in unexpected_keywords)
+                )
+        all_params = args[: len(pparams)]
+        all_params.extend(kparams.keys())
+        for param in all_params:
+            if all_params.count(param) > 1:
+                raise ExecutionError(f"Duplicate parameter '{param}'.")
+
+        if nb_opt_params == 0 and nb_standard_params != nb_min_params and pp is None:
+            raise ExecutionError(
+                f"Got {nb_standard_params} positionnal parameters, expected exactly {nb_min_params}."
+            )
+
+        if nb_standard_params > nb_max_params and pp is None:
+            raise ExecutionError(
+                f"Got {nb_standard_params} positionnal parameters, expected at most {nb_max_params}."
+            )
+
+    def get_group_getter(self, group: str):
+        """
+        @param group: A valid configuration group
+        @return: The getter method for the configuration group.
+        @rtype: method object
+        """
+        prefix = self.ui_getgroup_method_prefix
+        return getattr(self, "%s%s" % (prefix, group))
+
+    def get_group_setter(self, group: str):
+        """
+        @param group: A valid configuration group
+        @return: The setter method for the configuration group.
+        @rtype: method object
+        """
+        prefix = self.ui_setgroup_method_prefix
+        return getattr(self, "%s%s" % (prefix, group))
+
+    def define_config_group_param(
+        self,
+        group: str,
+        param: str,
+        type_: str,
+        description: str = None,
+        writable: bool = True,
+    ):
+        """
+        Helper to define configuration group parameters.
+        @param group: The configuration group to add the parameter to.
+        @param param: The new parameter name.
+        @param description: Optional description string.
+        @param writable: Whether or not this would be a rw or ro parameter.
+        """
+        if group not in self._configuration_groups:
+            self._configuration_groups[group] = {}
+
+        if description is None:
+            description = f"The {param} {group} parameter."
+
+        # Fail early if the type and set/get helpers don't exist
+        self.get_type_method(type_)
+        self.get_group_getter(group)
+        if writable:
+            self.get_group_setter(group)
+
+        self._configuration_groups[group][param] = [type_, description, writable]
+
+    def list_config_groups(self):
+        """
+        Lists the configuration group names.
+        """
+        return self._configuration_groups.keys()
+
+    def list_group_params(self, group: str, writable: bool = None):
+        """
+        Lists the parameters from group matching the optional param, writable
+        and type supplied (if none is supplied, returns all group parameters.
+        @param group: The group to list parameters of.
+        @param writable: Optional writable flag filter.
+        """
+        if group not in self.list_config_groups():
+            return []
+        else:
+            params = []
+            for p_name, p_def in self._configuration_groups[group].items():
+                (p_type, p_description, p_writable) = p_def
+                if writable is not None and p_writable != writable:
+                    continue
+                params.append(p_name)
+
+            params.sort()
+            return params
+
+    def get_group_param(self, group: str, param: str):
+        """
+        @param group: The configuration group to retreive the parameter from.
+        @param param: The parameter name.
+        @return: A dictionnary for the requested group parameter, with
+        name, writable, description, group and type fields.
+        @rtype: dict
+        @raise ValueError: If the parameter or group does not exist.
+        """
+        if group not in self.list_config_groups():
+            raise ValueError(f"Not such configuration group {group}")
+        if param not in self.list_group_params(group):
+            raise ValueError(
+                f"Not such parameter {param} in configuration group {group}"
+            )
+        (p_type, p_description, p_writable) = self._configuration_groups[group][param]
+
+        return dict(
+            name=param,
+            group=group,
+            type=p_type,
+            description=p_description,
+            writable=p_writable,
+        )
+
+    def is_root(self):
+        """
+        @return: Wether or not we are a root node.
+        @rtype: bool
+        """
+        if self.parent is None:
+            return True
+        else:
+            return False
+
+    def remove_child(self, child: ConfigNode):
+        """
+        Removes a child from our children's list.
+        @param child: The child to remove.
+        """
+        self.children.remove(child)
 
     def _render_tree(
         self,
@@ -491,239 +638,86 @@ class ConfigNode(
         loop.run()
         return listbox.focus_position
 
-    # Private methods
+    def __post_init__(self):
+        if self.parent is None:
+            if self._shell is None:
+                raise ValueError("A root ConfigNode must have a shell.")
+            else:
+                self._shell.attach_root_node(self)
+        else:
+            if self._shell is not None:
+                raise ValueError("A non-root ConfigNode can't have a shell.")
+
+            if self.parent.exist(self.name):
+                raise ValueError(f"Name {self.name} already used by a sibling.")
+            self.parent.children.add(self)
+
+        self._configuration_groups: dict[str, dict[str, list[str, str, str]]] = {}
+
+        self.define_config_group_param(
+            "global", "tree_round_nodes", "bool", "Tree node display style."
+        )
+        self.define_config_group_param(
+            "global",
+            "tree_status_mode",
+            "bool",
+            "Whether or not to display status in tree.",
+        )
+        self.define_config_group_param(
+            "global",
+            "tree_max_depth",
+            "number",
+            "Maximum depth of displayed node tree.",
+        )
+        self.define_config_group_param(
+            "global", "tree_show_root", "bool", "Whether or not to display tree root."
+        )
+        self.define_config_group_param(
+            "global", "color_mode", "bool", "Console color display mode."
+        )
+        self.define_config_group_param(
+            "global",
+            "loglevel_console",
+            "loglevel",
+            "Log level for messages going to the console.",
+        )
+        self.define_config_group_param(
+            "global",
+            "loglevel_file",
+            "loglevel",
+            "Log level for messages going to the log file.",
+        )
+        self.define_config_group_param("global", "logfile", "string", "Logfile to use.")
+        self.define_config_group_param(
+            "global", "color_default", "colordefault", "Default text display color."
+        )
+        self.define_config_group_param(
+            "global", "color_path", "color", "Color to use for path completions"
+        )
+        self.define_config_group_param(
+            "global", "color_command", "color", "Color to use for command completions."
+        )
+        self.define_config_group_param(
+            "global",
+            "color_parameter",
+            "color",
+            "Color to use for parameter completions.",
+        )
+        self.define_config_group_param(
+            "global", "color_keyword", "color", "Color to use for keyword completions."
+        )
+        self.define_config_group_param(
+            "global",
+            "prompt_length",
+            "number",
+            "Max length of the shell prompt path, 0 for infinite.",
+        )
+
+        if self.shell.prefs["bookmarks"] is None:
+            self.shell.prefs["bookmarks"] = {}
 
     def __str__(self):
         if self.is_root():
             return "/"
         else:
             return self.name
-
-    @property
-    def path(self):
-        """
-        @returns: The absolute path for this node.
-        @rtype: str
-        """
-        subpath = self._path_separator + self.name
-        if self.is_root():
-            return self._path_separator
-        elif self.parent.is_root():
-            return subpath
-        else:
-            return self.parent.path + subpath
-
-    @property
-    def shell(self):
-        """
-        Gets the shell attached to ConfigNode tree.
-        """
-        if self.is_root():
-            return self._shell
-        else:
-            return self.get_root().shell
-
-    # Public methods
-
-    def summary(self):
-        """
-        Returns a tuple with a status/description string for this node and a
-        health flag, to be displayed along the node's name in object trees,
-        etc.
-        @returns: (description, is_healthy)
-        @rtype: (str, bool or None)
-        """
-        return "", None
-
-    def assert_params(self, method, pparams: list[str], kparams: dict[str, str]):
-        """
-        Checks that positional and keyword parameters match a method
-        definition, or raise an ExecutionError.
-        @param method: The method to check call signature against.
-        @param pparams: The positional parameters.
-        @param kparams: The keyword parameters.
-        @raise ExecutionError: When the check fails.
-        """
-        spec = inspect.getfullargspec(method)
-        args = spec.args[1:]
-        pp = spec.varargs
-        kw = spec.varkw
-
-        if spec.defaults is None:
-            nb_opt_params = 0
-        else:
-            nb_opt_params = len(spec.defaults)
-        nb_max_params = len(args)
-        nb_min_params = nb_max_params - nb_opt_params
-
-        req_params = args[:nb_min_params]
-        opt_params = args[nb_min_params:]
-
-        unexpected_keywords = sorted(set(kparams) - set(args))
-        missing_params = sorted(
-            set(args[len(pparams) :]) - set(opt_params) - set(kparams.keys())
-        )
-
-        nb_params = len(pparams) + len(kparams)
-        nb_standard_params = len(pparams) + len(
-            [param for param in kparams if param in args]
-        )
-        nb_extended_params = nb_params - nb_standard_params
-
-        self.shell.log.debug("Min params: %d" % nb_min_params)
-        self.shell.log.debug("Max params: %d" % nb_max_params)
-        self.shell.log.debug("Required params: %s" % ", ".join(req_params))
-        self.shell.log.debug("Optional params: %s" % ", ".join(opt_params))
-        self.shell.log.debug("Got %s standard params." % nb_standard_params)
-        self.shell.log.debug("Got %s extended params." % nb_extended_params)
-        self.shell.log.debug("Variable positional params: %s" % pp)
-        self.shell.log.debug("Variable keyword params: %s" % kw)
-
-        if len(missing_params) == 1:
-            raise ExecutionError(f"Missing required parameter '{missing_params[0]}'")
-        elif missing_params:
-            raise ExecutionError(
-                "Missing required parameters %s"
-                % ", ".join("'%s'" % missing for missing in missing_params)
-            )
-
-        if kw is None:
-            if len(unexpected_keywords) == 1:
-                raise ExecutionError(
-                    f"Unexpected keyword parameter '{unexpected_keywords[0]}'."
-                )
-            elif unexpected_keywords:
-                raise ExecutionError(
-                    "Unexpected keyword parameters %s."
-                    % ", ".join("'%s'" % kw for kw in unexpected_keywords)
-                )
-        all_params = args[: len(pparams)]
-        all_params.extend(kparams.keys())
-        for param in all_params:
-            if all_params.count(param) > 1:
-                raise ExecutionError(f"Duplicate parameter '{param}'.")
-
-        if nb_opt_params == 0 and nb_standard_params != nb_min_params and pp is None:
-            raise ExecutionError(
-                f"Got {nb_standard_params} positionnal parameters, expected exactly {nb_min_params}."
-            )
-
-        if nb_standard_params > nb_max_params and pp is None:
-            raise ExecutionError(
-                f"Got {nb_standard_params} positionnal parameters, expected at most {nb_max_params}."
-            )
-
-    def get_group_getter(self, group: str):
-        """
-        @param group: A valid configuration group
-        @return: The getter method for the configuration group.
-        @rtype: method object
-        """
-        prefix = self.ui_getgroup_method_prefix
-        return getattr(self, "%s%s" % (prefix, group))
-
-    def get_group_setter(self, group: str):
-        """
-        @param group: A valid configuration group
-        @return: The setter method for the configuration group.
-        @rtype: method object
-        """
-        prefix = self.ui_setgroup_method_prefix
-        return getattr(self, "%s%s" % (prefix, group))
-
-    def define_config_group_param(
-        self,
-        group: str,
-        param: str,
-        type_: str,
-        description: str = None,
-        writable: bool = True,
-    ):
-        """
-        Helper to define configuration group parameters.
-        @param group: The configuration group to add the parameter to.
-        @param param: The new parameter name.
-        @param description: Optional description string.
-        @param writable: Whether or not this would be a rw or ro parameter.
-        """
-        if group not in self._configuration_groups:
-            self._configuration_groups[group] = {}
-
-        if description is None:
-            description = f"The {param} {group} parameter."
-
-        # Fail early if the type and set/get helpers don't exist
-        self.get_type_method(type_)
-        self.get_group_getter(group)
-        if writable:
-            self.get_group_setter(group)
-
-        self._configuration_groups[group][param] = [type_, description, writable]
-
-    def list_config_groups(self):
-        """
-        Lists the configuration group names.
-        """
-        return self._configuration_groups.keys()
-
-    def list_group_params(self, group: str, writable: bool = None):
-        """
-        Lists the parameters from group matching the optional param, writable
-        and type supplied (if none is supplied, returns all group parameters.
-        @param group: The group to list parameters of.
-        @param writable: Optional writable flag filter.
-        """
-        if group not in self.list_config_groups():
-            return []
-        else:
-            params = []
-            for p_name, p_def in self._configuration_groups[group].items():
-                (p_type, p_description, p_writable) = p_def
-                if writable is not None and p_writable != writable:
-                    continue
-                params.append(p_name)
-
-            params.sort()
-            return params
-
-    def get_group_param(self, group: str, param: str):
-        """
-        @param group: The configuration group to retreive the parameter from.
-        @param param: The parameter name.
-        @return: A dictionnary for the requested group parameter, with
-        name, writable, description, group and type fields.
-        @rtype: dict
-        @raise ValueError: If the parameter or group does not exist.
-        """
-        if group not in self.list_config_groups():
-            raise ValueError(f"Not such configuration group {group}")
-        if param not in self.list_group_params(group):
-            raise ValueError(
-                f"Not such parameter {param} in configuration group {group}"
-            )
-        (p_type, p_description, p_writable) = self._configuration_groups[group][param]
-
-        return dict(
-            name=param,
-            group=group,
-            type=p_type,
-            description=p_description,
-            writable=p_writable,
-        )
-
-    def is_root(self):
-        """
-        @return: Wether or not we are a root node.
-        @rtype: bool
-        """
-        if self.parent is None:
-            return True
-        else:
-            return False
-
-    def remove_child(self, child: ConfigNode):
-        """
-        Removes a child from our children's list.
-        @param child: The child to remove.
-        """
-        self.children.remove(child)
