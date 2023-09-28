@@ -28,6 +28,7 @@ class CmdHelp:
             )
             for command in commands:
                 msg += "  - %s\n" % self.get_command_syntax(command)[0]
+            msg += "\n"
             self.shell.con.epy_write(msg)
             return
 

@@ -73,7 +73,7 @@ class Cmds:
         self.assert_params(method, pparams, kparams)
         result = method(*pparams, **kparams)
         if asyncio.iscoroutine(result):
-            result = asyncio.run(result)
+            result = self.shell.run_async(result)
         return result
 
     def get_command_description(self: ConfigNode, command: str):

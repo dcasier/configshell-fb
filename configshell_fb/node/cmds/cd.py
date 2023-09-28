@@ -17,12 +17,60 @@ under the License.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Coroutine
 
+from ._utils import _render_tree
 from ..exception import ExecutionError
 
 if TYPE_CHECKING:
     from configshell_fb import ConfigNode
+
+
+def _lines_walker(lines: list[str], start_pos: int):
+    """
+    Using the curses urwid library, displays all lines passed as argument,
+    and after allowing selection of one line using up, down and enter keys,
+    returns its index.
+    @param lines: The lines to display and select from.
+    @param start_pos: The index of the line to select initially.
+    @return: the index of the selected line.
+    @rtype: int
+    """
+    import urwid
+
+    palette = [
+        ("header", "white", "black"),
+        ("reveal focus", "black", "yellow", "standout"),
+    ]
+
+    content = urwid.SimpleListWalker(
+        [
+            urwid.AttrMap(w, None, "reveal focus")
+            for w in [urwid.Text(line) for line in lines]
+        ]
+    )
+
+    listbox = urwid.ListBox(content)
+    frame = urwid.Frame(listbox)
+
+    def handle_input(input, raw):
+        for key in input:
+            widget, pos = content.get_focus()
+            if key == "up":
+                if pos > 0:
+                    content.set_focus(pos - 1)
+            elif key == "down":
+                try:
+                    content.set_focus(pos + 1)
+                except IndexError:
+                    pass
+            elif key == "enter":
+                raise urwid.ExitMainLoop()
+
+    content.set_focus(start_pos)
+    loop = urwid.MainLoop(frame, palette, input_filter=handle_input)
+    loop.run()
+    return listbox.focus_position
 
 
 class CmdCd:
@@ -131,9 +179,9 @@ class CmdCd:
 
         # Use an urwid walker to select the path
         if path is None:
-            lines, paths = self._render_tree(self.get_root(), do_list=True)
+            lines, paths = _render_tree(self.shell, self.get_root(), do_list=True)
             start_pos = paths.index(self.path)
-            selected = self._lines_walker(lines, start_pos=start_pos)
+            selected = _lines_walker(lines, start_pos=start_pos)
             path = paths[selected]
 
         # Normal path
@@ -173,7 +221,7 @@ class CmdCd:
         """
 
         if current_param == "path":
-            completions: list[str] | Coroutine[Any, Any, list[str]]
+            completions: list[str] | Coroutine[any, any, list[str]]
             completions = self.ui_complete_ls(parameters, text, current_param)
             completions.extend([nav for nav in ["<", ">"] if nav.startswith(text)])
             return completions

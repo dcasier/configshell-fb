@@ -18,7 +18,6 @@ under the License.
 from __future__ import annotations
 
 import inspect
-import re
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Awaitable
 
@@ -53,12 +52,6 @@ class ConfigNode(
     NodeGet,
     ParamTypes,
 ):
-    name: str
-
-    children: set[ConfigNode] = field(default_factory=set)
-    loaded: bool = field(default=False)
-    parent: ConfigNode = None
-    _shell: ConfigShell = None
 
     """
     The ConfigNode class defines a common skeleton to be used by specific
@@ -111,6 +104,13 @@ class ConfigNode(
                  get more information.
                  """
 
+    name: str
+
+    children: set[ConfigNode] = field(default_factory=set)
+    loaded: bool = field(default=False)
+    parent: ConfigNode = None
+    _shell: ConfigShell = None
+
     @property
     def path(self):
         """
@@ -134,106 +134,6 @@ class ConfigNode(
             return self._shell
         else:
             return self.get_root().shell
-
-    def exist(self, name: str):
-        return name in [c.name for c in self.children]
-
-    async def load(self, reload=False):
-        if reload is True:
-            self.loaded = False
-            self.children = set()
-        if self.loaded is False:
-            self.shell.log.debug(f"[{self.path}] Loading")
-            await self._load()
-        self.loaded = True
-
-    def reload(self) -> Awaitable:
-        return self.load(reload=True)
-
-    async def _load(self):
-        pass
-
-    def prompt_msg(self):
-        return ""
-
-    def ui_setgroup_global(self, parameter: str, value):
-        """
-        This is the backend method for setting parameters in configuration
-        group 'global'. It simply uses the Prefs() backend to store the global
-        preferences for the shell. Some of these group parameters are shared
-        using the same Prefs() object by the Log() and Console() classes, so
-        this backend should not be changed without taking this into
-        consideration.
-
-        The parameters getting to us have already been type-checked and casted
-        by the type-check methods registered in the config group via the ui set
-        command, and their existence in the group has also been checked. Thus
-        our job is minimal here. Also, it means that overhead when called with
-        generated arguments (as opposed to user-supplied) gets minimal
-        overhead, and allows setting new parameters without error.
-
-        @param parameter: The parameter to set.
-        @param value: The value
-        """
-        self.shell.prefs[parameter] = value
-
-    def ui_getgroup_global(self, parameter: str):
-        """
-        This is the backend method for getting configuration parameters out of
-        the global configuration group. It gets the values from the Prefs()
-        backend. Eventual casting to str for UI display is handled by the ui
-        get command, for symmetry with the pendant ui_setgroup method.
-        Existence of the parameter in the group should have already been
-        checked by the ui get command, so we go blindly about this. This might
-        allow internal client code to get a None value if the parameter does
-        not exist, as supported by Prefs().
-
-        @param parameter: The parameter to get the value of.
-        @return: The parameter's value
-        @rtype: arbitrary
-        """
-        return self.shell.prefs[parameter]
-
-    def ui_eval_param(self, ui_value: str, type_: str, default):
-        """
-        Evaluates a user-provided parameter value using a given type helper.
-        If the parameter value is None, the default will be returned. If the
-        ui_value does not check out with the type helper, and execution error
-        will be raised.
-
-        @param ui_value: The user provided parameter value.
-        @param type_: The ui_type to be used
-        @param default: The default value to return.
-        @return: The evaluated parameter value.
-        @rtype: depends on type
-        @raise ExecutionError: If evaluation fails.
-        """
-        type_method = self.get_type_method(type_)
-        if ui_value is None:
-            return default
-        else:
-            try:
-                value = type_method(ui_value)
-            except ValueError as msg:
-                raise ExecutionError(msg)
-            else:
-                return value
-
-    def get_type_method(self, type_: str):
-        """
-        Returns the type helper method matching the type name.
-        """
-        return getattr(self, f"{self.ui_type_method_prefix}{type_}")
-
-    def summary(self):
-        """
-        Returns a tuple with a status/description string for this node and a
-        health flag, to be displayed along the node's name in object trees,
-        etc.
-        @returns: (description, is_healthy)
-        @rtype: (str, bool or None)
-        """
-        return "", None
 
     def assert_params(self, method, pparams: list[str], kparams: dict[str, str]):
         """
@@ -322,6 +222,31 @@ class ConfigNode(
         prefix = self.ui_getgroup_method_prefix
         return getattr(self, "%s%s" % (prefix, group))
 
+    def get_group_param(self, group: str, param: str):
+        """
+        @param group: The configuration group to retreive the parameter from.
+        @param param: The parameter name.
+        @return: A dictionnary for the requested group parameter, with
+        name, writable, description, group and type fields.
+        @rtype: dict
+        @raise ValueError: If the parameter or group does not exist.
+        """
+        if group not in self.list_config_groups():
+            raise ValueError(f"Not such configuration group {group}")
+        if param not in self.list_group_params(group):
+            raise ValueError(
+                f"Not such parameter {param} in configuration group {group}"
+            )
+        (p_type, p_description, p_writable) = self._configuration_groups[group][param]
+
+        return dict(
+            name=param,
+            group=group,
+            type=p_type,
+            description=p_description,
+            writable=p_writable,
+        )
+
     def get_group_setter(self, group: str):
         """
         @param group: A valid configuration group
@@ -330,6 +255,12 @@ class ConfigNode(
         """
         prefix = self.ui_setgroup_method_prefix
         return getattr(self, "%s%s" % (prefix, group))
+
+    def get_type_method(self, type_: str):
+        """
+        Returns the type helper method matching the type name.
+        """
+        return getattr(self, f"{self.ui_type_method_prefix}{type_}")
 
     def define_config_group_param(
         self,
@@ -360,6 +291,19 @@ class ConfigNode(
 
         self._configuration_groups[group][param] = [type_, description, writable]
 
+    def exist(self, name: str):
+        return name in [c.name for c in self.children]
+
+    def is_root(self):
+        """
+        @return: Wether or not we are a root node.
+        @rtype: bool
+        """
+        if self.parent is None:
+            return True
+        else:
+            return False
+
     def list_config_groups(self):
         """
         Lists the configuration group names.
@@ -386,257 +330,104 @@ class ConfigNode(
             params.sort()
             return params
 
-    def get_group_param(self, group: str, param: str):
-        """
-        @param group: The configuration group to retreive the parameter from.
-        @param param: The parameter name.
-        @return: A dictionnary for the requested group parameter, with
-        name, writable, description, group and type fields.
-        @rtype: dict
-        @raise ValueError: If the parameter or group does not exist.
-        """
-        if group not in self.list_config_groups():
-            raise ValueError(f"Not such configuration group {group}")
-        if param not in self.list_group_params(group):
-            raise ValueError(
-                f"Not such parameter {param} in configuration group {group}"
-            )
-        (p_type, p_description, p_writable) = self._configuration_groups[group][param]
+    async def load(self):
+        if self.loaded is False:
+            self.shell.log.debug(f"[{self.path}] Loading")
+            await self._load()
+        self.loaded = True
 
-        return dict(
-            name=param,
-            group=group,
-            type=p_type,
-            description=p_description,
-            writable=p_writable,
-        )
+    def prompt_msg(self):
+        return ""
 
-    def is_root(self):
-        """
-        @return: Wether or not we are a root node.
-        @rtype: bool
-        """
-        if self.parent is None:
-            return True
-        else:
-            return False
-
-    def remove_child(self, child: ConfigNode):
+    def remove_child(self, child: ConfigNode | str):
         """
         Removes a child from our children's list.
         @param child: The child to remove.
         """
+        if isinstance(child, str):
+            child = self.get_child(child)
         self.children.remove(child)
 
-    def _render_tree(
-        self,
-        root: ConfigNode,
-        margin: list[bool] = None,
-        depth: int | str = None,
-        do_list: bool = False,
-    ):
+    def summary(self):
         """
-        Renders an ascii representation of a tree of ConfigNodes.
-        @param root: The root node of the tree
-        @param margin: Format of the left margin to use for children.
-        True results in a pipe, and False results in no pipe.
-        Used for recursion only.
-        @param depth: The maximum depth of nodes to display, None means
-        infinite.
-        @param do_list: Return two lists, one with each line text
-        representation, the other with the corresponding paths.
-        @return: An ascii tree representation or (lines, paths).
-        @rtype: str
+        Returns a tuple with a status/description string for this node and a
+        health flag, to be displayed along the node's name in object trees,
+        etc.
+        @returns: (description, is_healthy)
+        @rtype: (str, bool or None)
         """
-        lines = []
-        paths = []
+        return "", None
 
-        node_length = 2
-        node_shift = 2
-        level = root.path.rstrip("/").count("/")
-        if margin is None:
-            margin = [0]
-            root_call = True
-        else:
-            root_call = False
+    def ui_command_reload(self) -> Awaitable:
+        self.loaded = False
+        self.children = set()
+        return self.ui_command_cd(".")
 
-        if do_list:
-            color = None
-        elif not level % 3:
-            color = None
-        elif not (level - 1) % 3:
-            color = "blue"
-        else:
-            color = "magenta"
-
-        if do_list:
-            styles = None
-        elif root_call:
-            styles = ["bold", "underline"]
-        else:
-            styles = ["bold"]
-
-        if do_list:
-            name = root.name
-        else:
-            name = self.shell.con.render_text(root.name, color, styles=styles)
-        name_len = len(root.name)
-
-        summary = root.summary()
-        if inspect.iscoroutine(summary):
-            summary = summary
-        (description, is_healthy) = summary
-        if not description:
-            if is_healthy is True:
-                description = "OK"
-            elif is_healthy is False:
-                description = "ERROR"
-            else:
-                description = "..."
-
-        description_len = len(description) + 3
-
-        if do_list:
-            summary = "["
-        else:
-            summary = self.shell.con.render_text(" [", styles=["bold"])
-
-        if is_healthy is True:
-            if do_list:
-                summary += description
-            else:
-                summary += self.shell.con.render_text(description, "green")
-        elif is_healthy is False:
-            if do_list:
-                summary += description
-            else:
-                summary += self.shell.con.render_text(
-                    description, "red", styles=["bold"]
-                )
-        else:
-            summary += description
-
-        if do_list:
-            summary += "]"
-        else:
-            summary += self.shell.con.render_text("]", styles=["bold"])
-
-        def sorting_keys(s):
-            m = re.search(r"(.*?)(\d+$)", str(s))
-            if m:
-                return (m.group(1), int(m.group(2)))
-            else:
-                return (str(s), 0)
-
-        # Sort ending numbers numerically, so we get e.g. "lun1, lun2, lun10"
-        # instead of "lun1, lun10, lun2".
-        children = sorted(root.children, key=sorting_keys)
-        line = ""
-
-        for pipe in margin[:-1]:
-            if pipe:
-                line = line + "|".ljust(node_shift)
-            else:
-                line = line + "".ljust(node_shift)
-
-        if self.shell.prefs["tree_round_nodes"]:
-            node_char = "o"
-        else:
-            node_char = "+"
-        line += node_char.ljust(node_length, "-")
-        line += " "
-        margin_len = len(line)
-
-        pad = (
-            self.shell.con.get_width() - 1 - description_len - margin_len - name_len
-        ) * "."
-        if not do_list:
-            pad = self.shell.con.render_text(pad, color)
-
-        line += name
-        if self.shell.prefs["tree_status_mode"]:
-            line += " %s%s" % (pad, summary)
-
-        lines.append(line)
-        paths.append(root.path)
-
-        if root_call and not self.shell.prefs["tree_show_root"] and not do_list:
-            tree = ""
-            for child in children:
-                tree = tree + self._render_tree(child, [False], depth)
-        else:
-            tree = line + "\n"
-            if depth is None or depth > 0:
-                if depth is not None:
-                    depth = depth - 1
-                for i in range(len(children)):
-                    margin.append(i < len(children) - 1)
-                    if do_list:
-                        new_lines, new_paths = self._render_tree(
-                            children[i], margin, depth, do_list=True
-                        )
-                        lines.extend(new_lines)
-                        paths.extend(new_paths)
-                    else:
-                        tree = tree + self._render_tree(children[i], margin, depth)
-                    margin.pop()
-
-        if root_call:
-            if do_list:
-                return (lines, paths)
-            else:
-                return tree[:-1]
-        else:
-            if do_list:
-                return (lines, paths)
-            else:
-                return tree
-
-    def _lines_walker(self, lines: list[str], start_pos: int):
+    def ui_setgroup_global(self, parameter: str, value):
         """
-        Using the curses urwid library, displays all lines passed as argument,
-        and after allowing selection of one line using up, down and enter keys,
-        returns its index.
-        @param lines: The lines to display and select from.
-        @param start_pos: The index of the line to select initially.
-        @return: the index of the selected line.
-        @rtype: int
+        This is the backend method for setting parameters in configuration
+        group 'global'. It simply uses the Prefs() backend to store the global
+        preferences for the shell. Some of these group parameters are shared
+        using the same Prefs() object by the Log() and Console() classes, so
+        this backend should not be changed without taking this into
+        consideration.
+
+        The parameters getting to us have already been type-checked and casted
+        by the type-check methods registered in the config group via the ui set
+        command, and their existence in the group has also been checked. Thus
+        our job is minimal here. Also, it means that overhead when called with
+        generated arguments (as opposed to user-supplied) gets minimal
+        overhead, and allows setting new parameters without error.
+
+        @param parameter: The parameter to set.
+        @param value: The value
         """
-        import urwid
+        self.shell.prefs[parameter] = value
 
-        palette = [
-            ("header", "white", "black"),
-            ("reveal focus", "black", "yellow", "standout"),
-        ]
+    def ui_getgroup_global(self, parameter: str):
+        """
+        This is the backend method for getting configuration parameters out of
+        the global configuration group. It gets the values from the Prefs()
+        backend. Eventual casting to str for UI display is handled by the ui
+        get command, for symmetry with the pendant ui_setgroup method.
+        Existence of the parameter in the group should have already been
+        checked by the ui get command, so we go blindly about this. This might
+        allow internal client code to get a None value if the parameter does
+        not exist, as supported by Prefs().
 
-        content = urwid.SimpleListWalker(
-            [
-                urwid.AttrMap(w, None, "reveal focus")
-                for w in [urwid.Text(line) for line in lines]
-            ]
-        )
+        @param parameter: The parameter to get the value of.
+        @return: The parameter's value
+        @rtype: arbitrary
+        """
+        return self.shell.prefs[parameter]
 
-        listbox = urwid.ListBox(content)
-        frame = urwid.Frame(listbox)
+    def ui_eval_param(self, ui_value: str, type_: str, default):
+        """
+        Evaluates a user-provided parameter value using a given type helper.
+        If the parameter value is None, the default will be returned. If the
+        ui_value does not check out with the type helper, and execution error
+        will be raised.
 
-        def handle_input(input, raw):
-            for key in input:
-                widget, pos = content.get_focus()
-                if key == "up":
-                    if pos > 0:
-                        content.set_focus(pos - 1)
-                elif key == "down":
-                    try:
-                        content.set_focus(pos + 1)
-                    except IndexError:
-                        pass
-                elif key == "enter":
-                    raise urwid.ExitMainLoop()
+        @param ui_value: The user provided parameter value.
+        @param type_: The ui_type to be used
+        @param default: The default value to return.
+        @return: The evaluated parameter value.
+        @rtype: depends on type
+        @raise ExecutionError: If evaluation fails.
+        """
+        type_method = self.get_type_method(type_)
+        if ui_value is None:
+            return default
+        else:
+            try:
+                value = type_method(ui_value)
+            except ValueError as msg:
+                raise ExecutionError(msg)
+            else:
+                return value
 
-        content.set_focus(start_pos)
-        loop = urwid.MainLoop(frame, palette, input_filter=handle_input)
-        loop.run()
-        return listbox.focus_position
+    async def _load(self):
+        pass
 
     def __post_init__(self):
         if self.parent is None:
@@ -649,7 +440,8 @@ class ConfigNode(
                 raise ValueError("A non-root ConfigNode can't have a shell.")
 
             if self.parent.exist(self.name):
-                raise ValueError(f"Name {self.name} already used by a sibling.")
+                # raise ValueError(f"Name {self.name} already used by a sibling.")
+                self.parent.remove_child(self.name)
             self.parent.children.add(self)
 
         self._configuration_groups: dict[str, dict[str, list[str, str, str]]] = {}

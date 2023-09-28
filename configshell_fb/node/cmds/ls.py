@@ -19,6 +19,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from ._utils import _render_tree
 from ..exception import ExecutionError
 
 if TYPE_CHECKING:
@@ -61,7 +62,7 @@ class CmdLs:
 
         if depth == 0:
             depth = None
-        tree = self._render_tree(target, depth=depth)
+        tree = _render_tree(self.shell, target, depth=depth)
         self.shell.con.display(tree)
 
     def ui_complete_ls(

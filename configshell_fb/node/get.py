@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 import re
 from typing import TYPE_CHECKING
 
@@ -58,13 +57,13 @@ class NodeGet:
             next_node_name, next_path = path.split(self._path_separator, 1)
             next_node = self.get_node_adjacent(next_node_name)
             if _async_load_ is True:
-                asyncio.run(next_node.load())
+                self.shell.run_async(next_node.load())
             return next_node.get_node(next_path, _async_load_=_async_load_)
 
         # Path is just one of our children
         _node = self.get_node_adjacent(path)
         if _async_load_ is True:
-            asyncio.run(_node.load())
+            self.shell.run_async(_node.load())
         return _node
 
     def get_node_adjacent(self: ConfigNode, name: str):

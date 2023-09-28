@@ -23,7 +23,8 @@ import os
 # A fix for frozen packages
 import signal
 import sys
-from typing import TYPE_CHECKING, Sequence
+from asyncio import AbstractEventLoop
+from typing import TYPE_CHECKING, Sequence, Coroutine
 
 if TYPE_CHECKING:
     from typing import TextIO
@@ -113,19 +114,21 @@ class ConfigShell(object):
         "tree_max_depth": 0,
         "tree_status_mode": True,
         "tree_round_nodes": True,
-        "tree_show_root": True,
+        "tree_show_root": False,
     }
+    loop: AbstractEventLoop
 
     _completion_help_topic = ""
     _current_parameter = ""
     _current_token = ""
     _current_completions = []
 
-    def __init__(self, preferences_dir: str = None):
+    def __init__(self, preferences_dir: str = None, loop: AbstractEventLoop = None):
         """
         Creates a new ConfigShell.
         @param preferences_dir: Directory to load/save preferences from/to
         """
+        self.loop = loop
         self._current_node: ConfigNode | None = None
         self._root_node: ConfigNode | None = None
         self._exit = False
@@ -471,7 +474,7 @@ class ConfigShell(object):
                     current_parameters, text, self._current_parameter
                 )
                 if asyncio.iscoroutine(pparam_completions):
-                    pparam_completions = asyncio.run(pparam_completions)
+                    pparam_completions = self.run_async(pparam_completions)
                 if pparam_completions is not None:
                     completions.extend(pparam_completions)
 
@@ -519,7 +522,7 @@ class ConfigShell(object):
                 self.log.debug("Calling completion method for free params.")
                 free_completions = completion_method(current_parameters, text, "*")
                 if asyncio.iscoroutine(free_completions):
-                    free_completions = asyncio.run(free_completions)
+                    free_completions = self.run_async(free_completions)
                 do_free_pparams = False
                 do_free_kparams = False
                 for free_completion in free_completions:
@@ -595,7 +598,7 @@ class ConfigShell(object):
         if completion_method:
             completions = completion_method(current_parameters, current_value, keyword)
             if asyncio.iscoroutine(completions):
-                completions = asyncio.run(completions)
+                completions = self.run_async(completions)
             if completions is None:
                 completions = []
 
@@ -743,9 +746,12 @@ class ConfigShell(object):
             half = (prompt_length - 3) // 2
             prompt_path = f"{prompt_path[:half]}...{prompt_path[-half:]}"
 
-        return f"{self._current_node.prompt_msg()}{prompt_path} \n> "
+        _msg = self._current_node.prompt_msg()
+        if _msg == "" or prompt_path == "/":
+            return f"{prompt_path}>"
+        return f"{prompt_path} \n{_msg}> "
 
-    def _cli_loop_async(self):
+    def _cli_loop(self):
         """
         Starts the configuration shell interactive loop, that:
             - Goes to the last current path
@@ -761,7 +767,7 @@ class ConfigShell(object):
             except EOFError:
                 self.con.raw_write("exit\n")
                 cmdline = "exit"
-            self.run_cmdline_async(cmdline)
+            self.run_cmdline(cmdline)
             if self._save_history:
                 try:
                     readline.write_history_file(self._cmd_history)
@@ -861,7 +867,10 @@ class ConfigShell(object):
 
     # Public methods
 
-    def run_cmdline_async(self, cmdline: str):
+    def run_async(self, cor: Coroutine):
+        return self.loop.run_until_complete(cor)
+
+    def run_cmdline(self, cmdline: str):
         """
         Runs the specified command. Global commands are checked first,
         then local commands from the current node.
@@ -876,7 +885,7 @@ class ConfigShell(object):
             path, command, pparams, kparams = self._parse_cmdline(cmdline)[1:]
             self._execute_command(path, command, pparams, kparams)
 
-    def run_script_async(self, script_path: str, exit_on_error: bool = True):
+    def run_script(self, script_path: str, exit_on_error: bool = True):
         """
         Runs the script located at script_path.
         Script runs always start from the root context.
@@ -887,14 +896,14 @@ class ConfigShell(object):
         try:
             script_path = os.path.expanduser(script_path)
             script_fd = open(script_path, "r")
-            self.run_stdin_async(script_fd, exit_on_error)
+            self.run_stdin(script_fd, exit_on_error)
         except IOError as msg:
             raise IOError(msg)
         finally:
             if script_fd is not None:
                 script_fd.close()
 
-    def run_stdin_async(
+    def run_stdin(
         self,
         file_descriptor: TextIO | list[str] = sys.stdin,
         exit_on_error: bool = True,
@@ -908,7 +917,7 @@ class ConfigShell(object):
         self._current_node = self._root_node
         for cmdline in file_descriptor:
             try:
-                self.run_cmdline_async(cmdline.strip())
+                self.run_cmdline(cmdline.strip())
             except Exception as msg:
                 self.log.exception(msg)
                 if exit_on_error is True:
@@ -916,7 +925,7 @@ class ConfigShell(object):
 
                 self.log.exception("Keep running after an error.")
 
-    def run_interactive_async(self):
+    def run_interactive(self):
         """
         Starts interactive CLI mode.
         """
@@ -935,7 +944,7 @@ class ConfigShell(object):
             old_completer = None
             try:
                 old_completer = readline.get_completer()
-                self._cli_loop_async()
+                self._cli_loop()
                 break
             except KeyboardInterrupt:
                 self.con.raw_write("\n")
