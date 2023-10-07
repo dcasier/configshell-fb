@@ -186,7 +186,7 @@ class CmdCd:
 
         # Normal path
         try:
-            target_node = self.get_node(path)
+            target_node = self.get_node(path, _async_load_=True)
         except ValueError as msg:
             raise ExecutionError(str(msg))
 
